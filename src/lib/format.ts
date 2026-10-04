@@ -65,3 +65,20 @@ export function parseReaisToCents(input: string): number | null {
   if (!/^\d+(\.\d{1,2})?$/.test(text)) return null;
   return Math.round(Number(text) * 100);
 }
+
+const WEEKDAYS_LONG = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+
+/** "2026-11-14" → "Sábado, 14/11/2026" (coluna date, sem fuso). */
+export function formatEventDateLong(isoDate: string | null | undefined) {
+  if (!isoDate || !/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return "—";
+  const [y, m, d] = isoDate.split("-").map(Number);
+  const weekday = WEEKDAYS_LONG[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
+  return `${weekday}, ${formatEventDate(isoDate, false)}`;
+}
+
+const hourMinute = new Intl.DateTimeFormat("pt-BR", { timeZone: TZ, hour: "2-digit", minute: "2-digit" });
+
+/** Hora local de São Paulo, "08:42". */
+export function formatHourMinute(value: string | Date) {
+  return hourMinute.format(new Date(value));
+}

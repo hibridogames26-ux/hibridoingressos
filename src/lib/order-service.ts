@@ -27,6 +27,7 @@ export type BuyerOrder = {
   mp_status: string | null;
   mp_status_detail: string | null;
   paid_at: string | null;
+  tickets_email_sent_at: string | null;
   order_items: {
     quantity: number;
     unit_price_cents: number;
@@ -39,12 +40,13 @@ export type BuyerOrder = {
     token: string;
     short_code: string;
     status: TicketStatus;
+    redeemed_at: string | null;
     ticket_types: { name: string; event_date: string } | null;
   }[];
 };
 
 const ORDER_SELECT =
-  "id, access_key, buyer_name, buyer_email, buyer_cpf, status, payment_method, subtotal_cents, total_cents, expires_at, mp_payment_id, mp_status, mp_status_detail, paid_at, order_items(quantity, unit_price_cents, holder_names, ticket_types(name, event_date)), tickets(id, holder_name, token, short_code, status, ticket_types(name, event_date))";
+  "id, access_key, buyer_name, buyer_email, buyer_cpf, status, payment_method, subtotal_cents, total_cents, expires_at, mp_payment_id, mp_status, mp_status_detail, paid_at, tickets_email_sent_at, order_items(quantity, unit_price_cents, holder_names, ticket_types(name, event_date)), tickets(id, holder_name, token, short_code, status, redeemed_at, ticket_types(name, event_date))";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

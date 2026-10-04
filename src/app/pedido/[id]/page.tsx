@@ -5,6 +5,7 @@ import { PublicHeader, Steps } from "@/components/PublicHeader";
 import { card } from "@/components/ui/styles";
 import { chargeCents, surchargeCents } from "@/config/fees";
 import { formatBRL, formatEventDate } from "@/lib/format";
+import { paymentMethodLabel } from "@/lib/labels";
 import { getOrderForBuyer, syncOrderWithMp, type BuyerOrder } from "@/lib/order-service";
 import { createAdminClient } from "@/lib/supabase/server";
 import { isReservationExpired } from "@/lib/time";
@@ -68,14 +69,16 @@ export default async function PedidoPage({ params, searchParams }: PageProps<"/p
 
         {order.status === "pago" && (
           <>
-            <div className="flex flex-col gap-2">
-              <span className="w-fit rounded-md bg-success/16 px-2 py-0.5 text-xs font-medium text-success-ink">
-                Pagamento aprovado
+            <div className="flex flex-col gap-1">
+              <span className="text-[13px] text-cool-gray">
+                Pedido confirmado
+                {order.payment_method && ` · ${paymentMethodLabel[order.payment_method]}`}
               </span>
-              <h1 className="font-display text-4xl font-bold leading-[1.22] tracking-[-0.5px]">Seus ingressos</h1>
+              <h1 className="font-display text-[28px] font-bold leading-[1.29] tracking-[-0.5px]">Seus ingressos</h1>
               <p className="text-sm text-cool-gray">
-                Enviamos este link para {order.buyer_email}. Apresente o QR Code na entrada para receber a pulseira.
-                Cada ingresso só pode ser lido uma vez: não compartilhe prints.
+                {order.tickets_email_sent_at
+                  ? `Também enviamos o link desta página para ${order.buyer_email}.`
+                  : "Guarde o link desta página: é por ele que você acessa seus ingressos."}
               </p>
             </div>
             <Tickets order={order} />

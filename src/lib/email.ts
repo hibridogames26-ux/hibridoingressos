@@ -40,7 +40,8 @@ export function ticketEmailHtml({ buyerName, orderUrl, tickets }: Omit<TicketEma
 
 /** Envia o e-mail; retorna false se o Resend não estiver configurado. */
 export async function sendTicketsEmail(data: TicketEmailData) {
-  const apiKey = process.env.RESEND_API_KEY;
+  // Aceita também o nome RESEND_API, usado no .env do projeto.
+  const apiKey = process.env.RESEND_API_KEY ?? process.env.RESEND_API;
   if (!apiKey) {
     console.warn("RESEND_API_KEY ausente: e-mail de ingressos não enviado.");
     return false;

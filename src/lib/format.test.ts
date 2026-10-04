@@ -4,6 +4,8 @@ import {
   formatDateTime,
   formatDayMonth,
   formatEventDate,
+  formatEventDateLong,
+  formatHourMinute,
   parseReaisToCents,
   percent,
 } from "./format";
@@ -40,5 +42,11 @@ describe("format", () => {
     expect(parseReaisToCents("-5")).toBeNull();
     expect(parseReaisToCents("abc")).toBeNull();
     expect(parseReaisToCents("")).toBeNull();
+  });
+
+  it("data longa do evento e hora local", () => {
+    expect(formatEventDateLong("2026-11-14")).toBe("Sábado, 14/11/2026");
+    expect(formatEventDateLong("")).toBe("—");
+    expect(formatHourMinute("2026-11-14T11:42:00Z")).toBe("08:42");
   });
 });
