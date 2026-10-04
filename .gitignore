@@ -34,3 +34,7 @@ out/
 next-env.d.ts
 .vercel
 *.tsbuildinfo
+
+# Supabase CLI
+supabase/.temp/
+supabase/.branches/
