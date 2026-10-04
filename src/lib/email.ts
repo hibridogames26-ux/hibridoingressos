@@ -1,4 +1,5 @@
 import "server-only";
+import nodemailer from "nodemailer";
 import { Resend } from "resend";
 import { event } from "@/config/event";
 import { formatEventDate } from "@/lib/format";
@@ -38,21 +39,58 @@ export function ticketEmailHtml({ buyerName, orderUrl, tickets }: Omit<TicketEma
   </div></body></html>`;
 }
 
-/** Envia o e-mail; retorna false se o Resend não estiver configurado. */
-export async function sendTicketsEmail(data: TicketEmailData) {
+export type EmailProvider = "gmail" | "resend" | null;
+
+/** Gmail (senha de app) tem prioridade; Resend fica como alternativa. */
+export function emailProvider(env: Record<string, string | undefined> = process.env): EmailProvider {
+  if (env.GMAIL_USER && env.GMAIL_APP_PASSWORD) return "gmail";
+  if (env.RESEND_API_KEY || env.RESEND_API) return "resend";
+  return null;
+}
+
+async function sendViaGmail(message: { to: string; subject: string; html: string }) {
+  const user = process.env.GMAIL_USER!;
+  // A senha de app do Google é exibida com espaços; o SMTP aceita sem eles.
+  const pass = process.env.GMAIL_APP_PASSWORD!.replace(/\s+/g, "");
+  const transporter = nodemailer.createTransport({
+    host: "smtp.gmail.com",
+    port: 465,
+    secure: true,
+    auth: { user, pass },
+  });
+  await transporter.sendMail({
+    from: { name: process.env.EMAIL_FROM_NAME ?? `${event.name} ${event.year}`, address: user },
+    to: message.to,
+    subject: message.subject,
+    html: message.html,
+  });
+}
+
+async function sendViaResend(message: { to: string; subject: string; html: string }) {
   // Aceita também o nome RESEND_API, usado no .env do projeto.
-  const apiKey = process.env.RESEND_API_KEY ?? process.env.RESEND_API;
-  if (!apiKey) {
-    console.warn("RESEND_API_KEY ausente: e-mail de ingressos não enviado.");
+  const apiKey = (process.env.RESEND_API_KEY ?? process.env.RESEND_API)!;
+  const from = process.env.EMAIL_FROM ?? "Híbrido Games <onboarding@resend.dev>";
+  const { error } = await new Resend(apiKey).emails.send({ from, ...message });
+  if (error) throw new Error(error.message);
+}
+
+/** Envia o e-mail de ingressos; retorna false se nenhum provedor estiver configurado. */
+export async function sendTicketsEmail(data: TicketEmailData) {
+  const provider = emailProvider();
+  if (!provider) {
+    console.warn("Nenhum provedor de e-mail configurado (GMAIL_USER/GMAIL_APP_PASSWORD): e-mail não enviado.");
     return false;
   }
-  const from = process.env.EMAIL_FROM ?? "Híbrido Games <onboarding@resend.dev>";
-  const { error } = await new Resend(apiKey).emails.send({
-    from,
+  const message = {
     to: data.to,
     subject: `Seus ingressos — ${event.name} ${event.year}`,
     html: ticketEmailHtml(data),
-  });
-  if (error) throw new Error(`Falha ao enviar e-mail: ${error.message}`);
+  };
+  try {
+    if (provider === "gmail") await sendViaGmail(message);
+    else await sendViaResend(message);
+  } catch (error) {
+    throw new Error(`Falha ao enviar e-mail via ${provider}: ${error instanceof Error ? error.message : error}`);
+  }
   return true;
 }
