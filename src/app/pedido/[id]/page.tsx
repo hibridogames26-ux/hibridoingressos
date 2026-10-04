@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { PublicHeader, Steps } from "@/components/PublicHeader";
 import { card } from "@/components/ui/styles";
 import { chargeCents, surchargeCents } from "@/config/fees";
+import { mercadoPagoPublicKey } from "@/lib/env";
 import { formatBRL, formatEventDate } from "@/lib/format";
 import { paymentMethodLabel } from "@/lib/labels";
 import { getOrderForBuyer, syncOrderWithMp, type BuyerOrder } from "@/lib/order-service";
@@ -99,7 +100,7 @@ export default async function PedidoPage({ params, searchParams }: PageProps<"/p
                 inAnalysis={order.mp_status === "in_process" || order.mp_status === "authorized"}
                 buyerEmail={order.buyer_email}
                 buyerCpf={order.buyer_cpf}
-                publicKey={process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY ?? ""}
+                publicKey={mercadoPagoPublicKey()}
               />
               <Summary order={order} />
             </div>

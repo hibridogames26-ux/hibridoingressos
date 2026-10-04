@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Sans } from "next/font/google";
+import { siteUrl } from "@/lib/env";
 import "./globals.css";
 
 const plex = IBM_Plex_Sans({
@@ -13,9 +14,7 @@ const description =
   "Canal oficial do Híbrido Games 2026, evento de funcional fitness chancelado pela FPF3. Compre seu ingresso e acompanhe as novidades.";
 
 export const metadata: Metadata = {
-  metadataBase: new URL(
-    process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
-  ),
+  metadataBase: new URL(siteUrl()),
   title,
   description,
   openGraph: {

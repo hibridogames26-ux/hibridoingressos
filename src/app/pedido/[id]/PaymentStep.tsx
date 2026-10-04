@@ -195,6 +195,11 @@ export function PaymentStep(props: Props) {
           <p className="text-xs text-muted">
             Pagamento processado pelo Mercado Pago. Os dados do cartão não passam pelos nossos servidores.
           </p>
+          {!props.publicKey ? (
+            <FormMessage tone="error">
+              Pagamento com cartão indisponível no momento. Use o Pix ou tente novamente mais tarde.
+            </FormMessage>
+          ) : (
           <CardBrick
             key={brickKey}
             publicKey={props.publicKey}
@@ -203,6 +208,7 @@ export function PaymentStep(props: Props) {
             cpf={props.buyerCpf}
             onSubmit={submitCard}
           />
+          )}
         </div>
       )}
     </div>

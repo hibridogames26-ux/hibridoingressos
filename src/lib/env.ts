@@ -19,4 +19,20 @@ export const supabasePublishableKey = () =>
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY,
   );
 
-export const siteUrl = () => process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+/**
+ * URL pública do site. Em produção na Vercel, sem NEXT_PUBLIC_SITE_URL,
+ * usa o domínio de produção do projeto (variável de sistema da Vercel).
+ */
+export const siteUrl = () => {
+  if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, "");
+  const vercelHost = process.env.VERCEL_PROJECT_PRODUCTION_URL;
+  if (vercelHost) return `https://${vercelHost}`;
+  return "http://localhost:3000";
+};
+
+/**
+ * Chave pública do Mercado Pago. Lida no servidor e repassada à página;
+ * aceita também MERCADOPAGO_PUBLIC_KEY (nome usado nas variáveis da Vercel).
+ */
+export const mercadoPagoPublicKey = () =>
+  process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY || process.env.MERCADOPAGO_PUBLIC_KEY || "";

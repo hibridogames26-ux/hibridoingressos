@@ -1,4 +1,5 @@
 import "server-only";
+import { siteUrl } from "@/lib/env";
 import type { PaymentMethod } from "@/lib/labels";
 
 const API = "https://api.mercadopago.com";
@@ -62,8 +63,8 @@ const toReais = (cents: number) => Math.round(cents) / 100;
 
 /** URL de notificação só quando o site é público (https). */
 function notificationUrl() {
-  const site = process.env.NEXT_PUBLIC_SITE_URL;
-  return site?.startsWith("https://") ? `${site}/api/mp/webhook` : undefined;
+  const site = siteUrl();
+  return site.startsWith("https://") ? `${site}/api/mp/webhook` : undefined;
 }
 
 type Payer = { email: string; firstName: string; lastName: string; cpf: string };
