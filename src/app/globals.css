@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+/* Design system: inspirado no Kraken (DESIGN-kraken.md) */
+:root {
+  --brand: #7132f5;
+  --brand-dark: #5741d8;
+  --brand-deep: #5b1ecf;
+  --brand-subtle: rgba(133, 91, 251, 0.16);
+  --ink: #101114;
+  --cool-gray: #686b82;
+  --muted: #9497a9;
+  --line: #dedee5;
+  --surface: #ffffff;
+  --success: #149e61;
+  --success-ink: #026b3f;
+  /* Erro: o guia não define vermelho; necessário para a portaria. */
+  --danger: #d92d20;
+  --danger-ink: #912018;
+}
+
+@theme inline {
+  --color-brand: var(--brand);
+  --color-brand-dark: var(--brand-dark);
+  --color-brand-deep: var(--brand-deep);
+  --color-brand-subtle: var(--brand-subtle);
+  --color-ink: var(--ink);
+  --color-cool-gray: var(--cool-gray);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-surface: var(--surface);
+  --color-success: var(--success);
+  --color-success-ink: var(--success-ink);
+  --color-danger: var(--danger);
+  --color-danger-ink: var(--danger-ink);
+  --font-sans: var(--font-plex), "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-display: var(--font-plex), Helvetica, Arial, sans-serif;
+  --shadow-whisper: rgba(0, 0, 0, 0.03) 0px 4px 24px;
+  --shadow-micro: rgba(16, 24, 40, 0.04) 0px 1px 4px;
+}
+
+body {
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  line-height: 1.38;
+}
