@@ -1,21 +1,22 @@
 -- Checkout: reserva atômica de estoque, confirmação idempotente de pagamento e expiração.
 -- Todas as funções são executadas apenas pelo servidor (service role).
+-- Idempotente: pode ser executada mais de uma vez sem erro.
 
 -- ---------------------------------------------------------------------------
 -- Colunas novas
 -- ---------------------------------------------------------------------------
 alter table public.orders
-  add column subtotal_cents   integer not null default 0 check (subtotal_cents >= 0),
+  add column if not exists subtotal_cents   integer not null default 0 check (subtotal_cents >= 0),
   -- Link secreto do pedido (/pedido/[id]?k=...), 256 bits.
-  add column access_key       text not null unique default encode(extensions.gen_random_bytes(32), 'hex'),
-  add column expires_at       timestamptz,
-  add column mp_status        text,
-  add column mp_status_detail text;
+  add column if not exists access_key       text not null unique default encode(extensions.gen_random_bytes(32), 'hex'),
+  add column if not exists expires_at       timestamptz,
+  add column if not exists mp_status        text,
+  add column if not exists mp_status_detail text;
 
-create index orders_pending_expiry_idx on public.orders (expires_at) where status = 'pendente';
+create index if not exists orders_pending_expiry_idx on public.orders (expires_at) where status = 'pendente';
 
 alter table public.order_items
-  add column holder_names text[] not null default '{}';
+  add column if not exists holder_names text[] not null default '{}';
 
 -- ---------------------------------------------------------------------------
 -- Libera o estoque de um pedido pendente (interno)
