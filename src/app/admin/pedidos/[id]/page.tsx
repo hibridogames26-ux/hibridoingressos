@@ -73,18 +73,18 @@ export default async function PedidoPage({ params }: PageProps<"/admin/pedidos/[
   return (
     <>
       <nav className="text-sm text-muted" aria-label="Navegação">
-        <Link href="/admin/pedidos" className="hover:text-brand">
+        <Link href="/admin/pedidos" className="inline-flex min-h-11 items-center hover:text-brand pointer-fine:min-h-0">
           Pedidos
         </Link>{" "}
         › <span className="text-ink">{order.buyer_name}</span>
       </nav>
       <PageHeader title={order.buyer_name} description={`Pedido ${order.id}`} />
 
-      <section className={`${card} grid gap-x-8 gap-y-4 p-5 sm:grid-cols-2 lg:grid-cols-3`}>
+      <section className={`${card} grid grid-cols-2 gap-x-6 gap-y-4 p-4 sm:p-5 lg:grid-cols-3 lg:gap-x-8`}>
         {facts.map(([k, v]) => (
           <div key={k} className="flex flex-col gap-0.5">
             <span className="text-xs text-muted">{k}</span>
-            <span className="break-all text-sm font-medium">{v}</span>
+            <span className="break-words text-sm font-medium [overflow-wrap:anywhere]">{v}</span>
           </div>
         ))}
       </section>
@@ -93,7 +93,7 @@ export default async function PedidoPage({ params }: PageProps<"/admin/pedidos/[
         <h2 className="text-[22px] font-semibold leading-tight">Ingressos ({tickets.length})</h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {tickets.map((t) => (
-            <article key={t.id} className={`${card} flex flex-col items-center gap-3 p-5 text-center`}>
+            <article key={t.id} className={`${card} flex flex-col items-center gap-3 p-4 text-center sm:p-5`}>
               {/* eslint-disable-next-line @next/next/no-img-element -- data URI gerada no servidor */}
               <img src={t.qr} alt={`QR do ingresso ${t.short_code}`} width={160} height={160} />
               <div className="font-mono text-lg font-semibold tracking-widest">{t.short_code}</div>

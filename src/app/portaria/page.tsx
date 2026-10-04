@@ -20,7 +20,7 @@ export default async function PortariaPage() {
     .gte("created_at", startOfTodaySaoPaulo());
 
   return (
-    <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-4 px-4 py-4">
+    <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-4 px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]">
       <header className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Image src="/logo-hibrido-games.png" alt="" width={32} height={36} />
@@ -29,14 +29,14 @@ export default async function PortariaPage() {
             <p className="text-xs text-muted">{profile.name}</p>
           </div>
         </div>
-        <div className="flex items-center gap-3 text-sm">
+        <div className="flex items-center gap-1 text-sm">
           {profile.role === "admin" && (
-            <Link href="/admin" className="text-brand hover:underline">
+            <Link href="/admin" className="inline-flex min-h-11 items-center rounded-lg px-2 text-brand underline-offset-4 hover:underline active:opacity-70">
               Dashboard
             </Link>
           )}
           <form action="/auth/sair" method="post">
-            <button className="text-cool-gray hover:text-ink">Sair</button>
+            <button className="inline-flex min-h-11 items-center rounded-lg px-2 text-cool-gray transition-colors hover:text-ink active:text-ink">Sair</button>
           </form>
         </div>
       </header>

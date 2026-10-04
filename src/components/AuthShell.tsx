@@ -12,12 +12,12 @@ export function AuthShell({
   children: React.ReactNode;
 }) {
   return (
-    <main className="flex flex-1 items-center justify-center bg-muted/8 px-4 py-12">
+    <main className="flex flex-1 items-center justify-center bg-muted/8 px-4 pt-8 pb-[max(2rem,env(safe-area-inset-bottom))] sm:py-12">
       <div className="flex w-full max-w-sm flex-col items-center gap-6">
-        <Link href="/" aria-label="Início">
+        <Link href="/" aria-label="Início" className="animate-shield rounded-lg focus-visible:outline-2 focus-visible:outline-brand">
           <Image src="/logo-hibrido-games.png" alt="" width={64} height={72} priority />
         </Link>
-        <div className={`${card} flex w-full flex-col gap-6 p-6`}>
+        <div style={{ animationDelay: "120ms" }} className={`${card} flex w-full animate-rise flex-col gap-6 p-5 sm:p-6`}>
           <div className="flex flex-col gap-1">
             <h1 className="font-display text-[28px] font-bold leading-[1.29] tracking-[-0.5px]">
               {title}
@@ -43,7 +43,7 @@ export function FormMessage({
       ? "bg-danger/8 text-danger-ink"
       : "bg-success/16 text-success-ink";
   return (
-    <p role={tone === "error" ? "alert" : "status"} className={`rounded-xl px-4 py-3 text-sm ${styles}`}>
+    <p role={tone === "error" ? "alert" : "status"} className={`animate-message rounded-xl px-4 py-3 text-sm ${styles}`}>
       {children}
     </p>
   );

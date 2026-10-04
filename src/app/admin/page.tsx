@@ -92,14 +92,14 @@ export default async function AdminHome() {
         />
       </section>
 
-      <section className={`${card} flex flex-col gap-4 p-5`}>
+      <section className={`${card} flex flex-col gap-4 p-4 sm:p-5`}>
         <h2 className="text-[22px] font-semibold leading-tight">Vendas por dia</h2>
         {daily.length ? <SalesChart data={daily} /> : <EmptyState>Nenhuma venda confirmada ainda.</EmptyState>}
       </section>
 
       <section className="grid gap-4 lg:grid-cols-2">
         <div className={`${card} overflow-hidden`}>
-          <h2 className="px-5 pt-5 text-[22px] font-semibold leading-tight">Por tipo de ingresso</h2>
+          <h2 className="px-4 pt-4 text-[22px] font-semibold leading-tight sm:px-5 sm:pt-5">Por tipo de ingresso</h2>
           {byType.length ? (
             <div className="overflow-x-auto">
               <table className={`${tableCls} mt-3`}>
@@ -120,11 +120,11 @@ export default async function AdminHome() {
                           {formatEventDate(t.event_date)} · {formatBRL(t.price_cents)}
                         </div>
                       </td>
-                      <td className={`${tdCls} text-right tabular-nums`}>
+                      <td data-label="Vendidos" className={`${tdCls} text-right tabular-nums`}>
                         {t.sold} / {t.quantity}
                       </td>
-                      <td className={`${tdCls} text-right tabular-nums`}>{t.redeemed}</td>
-                      <td className={`${tdCls} text-right tabular-nums`}>{formatBRL(t.gross_cents)}</td>
+                      <td data-label="Rasgados" className={`${tdCls} text-right tabular-nums`}>{t.redeemed}</td>
+                      <td data-label="Receita" className={`${tdCls} text-right tabular-nums`}>{formatBRL(t.gross_cents)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -136,7 +136,7 @@ export default async function AdminHome() {
         </div>
 
         <div className={`${card} overflow-hidden`}>
-          <h2 className="px-5 pt-5 text-[22px] font-semibold leading-tight">Por forma de pagamento</h2>
+          <h2 className="px-4 pt-4 text-[22px] font-semibold leading-tight sm:px-5 sm:pt-5">Por forma de pagamento</h2>
           {byMethod.length ? (
             <div className="overflow-x-auto">
               <table className={`${tableCls} mt-3`}>
@@ -160,10 +160,10 @@ export default async function AdminHome() {
                           <div className="text-xs text-muted">Taxa {feeRateLabel(m.payment_method)}</div>
                         )}
                       </td>
-                      <td className={`${tdCls} text-right tabular-nums`}>{m.orders}</td>
-                      <td className={`${tdCls} text-right tabular-nums`}>{formatBRL(m.gross_cents)}</td>
-                      <td className={`${tdCls} text-right tabular-nums`}>{formatBRL(m.fee_cents)}</td>
-                      <td className={`${tdCls} text-right tabular-nums`}>{formatBRL(m.net_cents)}</td>
+                      <td data-label="Pedidos" className={`${tdCls} text-right tabular-nums`}>{m.orders}</td>
+                      <td data-label="Bruto" className={`${tdCls} text-right tabular-nums`}>{formatBRL(m.gross_cents)}</td>
+                      <td data-label="Taxas" className={`${tdCls} text-right tabular-nums`}>{formatBRL(m.fee_cents)}</td>
+                      <td data-label="Líquido" className={`${tdCls} text-right tabular-nums`}>{formatBRL(m.net_cents)}</td>
                     </tr>
                   ))}
                 </tbody>

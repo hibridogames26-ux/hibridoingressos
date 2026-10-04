@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import { AuthShell, FormMessage } from "@/components/AuthShell";
-import { btnPrimary, input, label } from "@/components/ui/styles";
+import { btnPrimary, input, label, textLink } from "@/components/ui/styles";
 import { requestReset } from "./actions";
 
 export default function RecuperarSenhaPage() {
@@ -16,12 +16,12 @@ export default function RecuperarSenhaPage() {
         {state?.success && <FormMessage tone="success">{state.success}</FormMessage>}
         <label className="flex flex-col gap-1.5">
           <span className={label}>E-mail</span>
-          <input className={input} type="email" name="email" autoComplete="email" required />
+          <input className={input} type="email" name="email" autoComplete="email" autoCapitalize="none" spellCheck={false} required />
         </label>
         <button type="submit" className={btnPrimary} disabled={pending}>
           {pending ? "Enviando…" : "Enviar link"}
         </button>
-        <Link href="/login" className="text-center text-sm text-brand hover:underline">
+        <Link href="/login" className={textLink}>
           Voltar para o login
         </Link>
       </form>

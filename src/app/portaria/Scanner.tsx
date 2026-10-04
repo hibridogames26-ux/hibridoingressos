@@ -114,11 +114,11 @@ export function Scanner({ initialCount }: { initialCount: number }) {
 
   return (
     <div className="flex flex-1 flex-col gap-4">
-      <div className="flex items-center justify-between text-sm">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-sm">
         <span className="inline-flex items-center gap-2">
           <span
             aria-hidden="true"
-            className={`size-2.5 rounded-full ${online ? "bg-success" : "bg-danger"}`}
+            className={`size-2.5 rounded-full transition-colors duration-300 ${online ? "bg-success" : "animate-pulse bg-danger"}`}
           />
           {online ? "Online" : "Sem internet — leituras não serão registradas"}
         </span>
@@ -127,7 +127,7 @@ export function Scanner({ initialCount }: { initialCount: number }) {
         </span>
       </div>
 
-      <div className="relative aspect-square w-full overflow-hidden rounded-2xl bg-ink">
+      <div className="relative aspect-square max-h-[60svh] w-full overflow-hidden rounded-2xl bg-ink">
         <video ref={videoRef} className="size-full object-cover" muted playsInline />
         {cameraError && (
           <p className="absolute inset-0 flex items-center justify-center p-6 text-center text-sm text-white/80">
@@ -135,7 +135,7 @@ export function Scanner({ initialCount }: { initialCount: number }) {
           </p>
         )}
         {view.kind === "checking" && (
-          <div className="absolute inset-0 flex items-center justify-center bg-ink/70 text-lg font-semibold text-white">
+          <div className="absolute inset-0 flex animate-fade items-center justify-center bg-ink/70 text-lg font-semibold text-white backdrop-blur-sm">
             Validando…
           </div>
         )}
@@ -157,9 +157,12 @@ export function Scanner({ initialCount }: { initialCount: number }) {
           aria-label="Digitar código do ingresso"
           autoCapitalize="characters"
           autoComplete="off"
+          autoCorrect="off"
+          spellCheck={false}
+          enterKeyHint="go"
           maxLength={20}
         />
-        <button className={btnPrimary} disabled={view.kind !== "scanning"}>
+        <button className={`${btnPrimary} shrink-0`} disabled={view.kind !== "scanning"}>
           Validar
         </button>
       </form>
@@ -203,16 +206,14 @@ function ResultOverlay({ data, onNext }: { data: RedeemResult; onNext: () => voi
   return (
     <div
       role="alert"
-      className={`fixed inset-0 z-50 flex flex-col items-center justify-center gap-6 p-6 text-center text-white ${
+      className={`fixed inset-0 z-50 flex animate-fade flex-col items-center justify-center gap-6 overflow-y-auto px-6 pt-[max(1.5rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))] text-center text-white [@media(max-height:30rem)]:gap-3 ${
         ok ? "bg-success" : "bg-danger"
       }`}
       onClick={onNext}
     >
-      <span aria-hidden="true" className="text-7xl font-bold leading-none">
-        {ok ? "✓" : "✕"}
-      </span>
+      <ResultIcon ok={ok} />
       <div className="flex flex-col gap-2">
-        <h2 className="font-display text-4xl font-bold uppercase leading-[1.17] tracking-[-1px]">
+        <h2 className="text-balance font-display text-4xl font-bold uppercase leading-[1.17] tracking-[-1px] [@media(max-height:30rem)]:text-3xl">
           {content.title}
         </h2>
         <p className="text-lg font-medium text-white/90">{content.lead}</p>
@@ -229,10 +230,39 @@ function ResultOverlay({ data, onNext }: { data: RedeemResult; onNext: () => voi
       <button
         type="button"
         onClick={onNext}
-        className="mt-4 rounded-xl bg-white px-6 py-[13px] text-base font-semibold text-ink"
+        className="mt-4 min-h-12 w-full max-w-xs rounded-xl bg-white px-6 py-[13px] text-base font-semibold text-ink transition duration-150 active:scale-[0.98] active:bg-white/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white [@media(max-height:30rem)]:mt-0"
       >
         Próxima leitura
       </button>
+    </div>
+  );
+}
+
+/** Liberado: o visto se desenha. Recusado: o X se desenha e o selo balança em negação. */
+function ResultIcon({ ok }: { ok: boolean }) {
+  const stroke = {
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 4.5,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    pathLength: 1,
+    strokeDasharray: 1,
+  };
+  return (
+    <div aria-hidden="true" style={{ animationDelay: "220ms" }} className={ok ? "" : "animate-shake"}>
+      <div className="flex size-24 animate-pop items-center justify-center rounded-full bg-white/20 [@media(max-height:30rem)]:size-16">
+        <svg viewBox="0 0 48 48" className="size-14 [@media(max-height:30rem)]:size-10">
+          {ok ? (
+            <path d="M12 25 20 33 36 16" className="animate-draw" {...stroke} />
+          ) : (
+            <>
+              <path d="M15 15 33 33" className="animate-draw" {...stroke} />
+              <path d="M33 15 15 33" className="animate-draw" style={{ animationDelay: "160ms" }} {...stroke} />
+            </>
+          )}
+        </svg>
+      </div>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PublicHeader, Steps } from "@/components/PublicHeader";
-import { card } from "@/components/ui/styles";
+import { card, textLink } from "@/components/ui/styles";
 import { getCatalog } from "@/lib/catalog";
 import { parseCart, serializeCart } from "@/lib/checkout";
 import { CheckoutForm, type CheckoutLine } from "./CheckoutForm";
@@ -12,7 +12,7 @@ function Problem({ message }: { message: string }) {
   return (
     <div className={`${card} flex flex-col items-center gap-3 px-6 py-12 text-center`}>
       <p className="text-base">{message}</p>
-      <Link href="/ingressos" className="text-sm text-brand hover:underline">
+      <Link href="/ingressos" className={textLink}>
         Escolher ingressos
       </Link>
     </div>
@@ -53,9 +53,9 @@ export default async function CheckoutPage({ searchParams }: PageProps<"/checkou
   return (
     <main className="flex flex-1 flex-col bg-muted/8">
       <PublicHeader />
-      <section className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-8">
+      <section className="mx-auto flex w-full max-w-5xl flex-col gap-5 px-4 py-6 sm:gap-6 sm:py-8">
         <Steps current={2} />
-        <h1 className="font-display text-4xl font-bold leading-[1.22] tracking-[-0.5px]">Seus dados</h1>
+        <h1 className="font-display text-[1.75rem] font-bold leading-[1.22] tracking-[-0.5px] sm:text-4xl">Seus dados</h1>
         {problem || !cart ? (
           <Problem message={problem ?? "Nenhum ingresso selecionado."} />
         ) : (

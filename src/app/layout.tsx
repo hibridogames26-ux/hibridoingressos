@@ -29,12 +29,14 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: "#ffffff",
+  // Ocupa a tela inteira no iPhone; as áreas seguras são tratadas no CSS.
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="pt-BR" className={`${plex.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="flex min-h-full flex-col pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">{children}</body>
     </html>
   );
 }

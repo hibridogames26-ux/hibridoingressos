@@ -32,6 +32,8 @@ function Row({ label, value }: { label: string; value: string }) {
 /** Modelo "Carteira clean" (opção B): faixa roxa, QR central e dados do titular. */
 function TicketCard({ ticket, qr, index, total }: { ticket: Ticket; qr: string; index: number; total: number }) {
   const valid = ticket.status === "valido";
+  // Emissão em sequência, com o atraso total limitado para pedidos grandes.
+  const delay = Math.min(index, 4) * 120;
   const overlay =
     ticket.status === "rasgado"
       ? `Ingresso rasgado${ticket.redeemed_at ? ` às ${formatHourMinute(ticket.redeemed_at)}` : ""}`
@@ -43,7 +45,8 @@ function TicketCard({ ticket, qr, index, total }: { ticket: Ticket; qr: string; 
     <article
       id={`ingresso-${index + 1}`}
       aria-label={`Ingresso ${index + 1} de ${total}: ${ticket.holder_name}`}
-      className="flex scroll-mt-4 flex-col overflow-hidden rounded-[20px] border border-line bg-surface shadow-whisper"
+      style={{ animationDelay: `${delay}ms` }}
+      className="flex scroll-mt-4 animate-issue flex-col overflow-hidden rounded-[20px] border border-line bg-surface shadow-whisper"
     >
       <header className="flex items-center gap-3 bg-brand px-[18px] py-4 text-white">
         <div className="flex rounded-xl bg-white p-1">
@@ -66,7 +69,8 @@ function TicketCard({ ticket, qr, index, total }: { ticket: Ticket; qr: string; 
             alt={valid ? `QR Code do ingresso de ${ticket.holder_name}` : ""}
             width={196}
             height={196}
-            className={`block size-[196px] ${valid ? "" : "opacity-15"}`}
+            style={{ animationDelay: `${delay + 280}ms` }}
+            className={`block size-[196px] animate-qr-focus ${valid ? "" : "opacity-15"}`}
           />
           {overlay && (
             <div className="absolute inset-0 flex items-center justify-center p-4">

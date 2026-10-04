@@ -3,6 +3,11 @@ export function hoursAgoIso(hours: number, now = Date.now()) {
   return new Date(now - hours * 3600 * 1000).toISOString();
 }
 
+/** O instante `iso` aconteceu há menos de `ms` milissegundos? */
+export function isRecent(iso: string, ms: number, now = Date.now()) {
+  return now - Date.parse(iso) < ms;
+}
+
 /** Início do dia em São Paulo (UTC−3, sem horário de verão desde 2019). */
 export function startOfTodaySaoPaulo(now = Date.now()) {
   const offsetMs = 3 * 3600 * 1000;

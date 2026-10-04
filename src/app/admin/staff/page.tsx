@@ -58,12 +58,12 @@ export default async function StaffPage() {
                         <div className="font-medium">{p.name}</div>
                         <div className="text-xs text-muted">{p.email}</div>
                       </td>
-                      <td className={tdCls}>
+                      <td data-label="Perfil" className={tdCls}>
                         <span className={p.role === "admin" ? badgeBrand : badgeNeutral}>
                           {p.role === "admin" ? "Admin" : "Staff"}
                         </span>
                       </td>
-                      <td className={tdCls}>
+                      <td data-label="Situação" className={tdCls}>
                         {!p.active ? (
                           <span className={badgeDanger}>Desativado</span>
                         ) : pendingInvite ? (
@@ -72,10 +72,10 @@ export default async function StaffPage() {
                           <span className={badgeSuccess}>Ativo</span>
                         )}
                       </td>
-                      <td className={`${tdCls} whitespace-nowrap text-cool-gray`}>
+                      <td data-label="Último acesso" className={`${tdCls} whitespace-nowrap text-cool-gray`}>
                         {formatDateTime(user?.last_sign_in_at)}
                       </td>
-                      <td className={`${tdCls} text-right tabular-nums`}>{act?.redeemed ?? 0}</td>
+                      <td data-label="Entradas liberadas" className={`${tdCls} text-right tabular-nums`}>{act?.redeemed ?? 0}</td>
                       <td className={tdCls}>
                         <StaffActions userId={p.user_id} active={p.active} isSelf={p.user_id === me?.user_id} />
                       </td>

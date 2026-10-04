@@ -9,14 +9,27 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
 
   return (
     <div className="flex min-h-full flex-1 flex-col md:flex-row">
-      <aside className="flex flex-col gap-4 border-b border-line bg-surface p-4 md:sticky md:top-0 md:h-screen md:w-60 md:border-b-0 md:border-r">
-        <Link href="/admin" className="flex items-center gap-2">
-          <Image src="/logo-hibrido-games.png" alt="" width={32} height={36} />
-          <span className="text-sm font-semibold leading-tight">
-            Híbrido Games
-            <span className="block text-xs font-normal text-muted">Dashboard</span>
-          </span>
-        </Link>
+      {/* Celular: barra fixa no topo com atalhos e abas roláveis. Desktop: menu lateral. */}
+      <aside className="sticky top-0 z-20 flex flex-col gap-2 border-b border-line bg-surface/95 px-4 pt-[max(0.5rem,env(safe-area-inset-top))] pb-2 backdrop-blur md:h-screen md:w-60 md:gap-4 md:border-b-0 md:border-r md:bg-surface md:p-4 md:backdrop-blur-none">
+        <div className="flex items-center justify-between gap-2">
+          <Link href="/admin" className="flex min-h-11 items-center gap-2 rounded-lg focus-visible:outline-2 focus-visible:outline-brand">
+            <Image src="/logo-hibrido-games.png" alt="" width={32} height={36} />
+            <span className="text-sm font-semibold leading-tight">
+              Híbrido Games
+              <span className="block text-xs font-normal text-muted">Dashboard</span>
+            </span>
+          </Link>
+          <div className="flex items-center gap-1 md:hidden">
+            <Link href="/portaria" className={btnSecondary}>
+              Portaria
+            </Link>
+            <form action="/auth/sair" method="post">
+              <button className="inline-flex min-h-11 items-center rounded-lg px-2 text-sm text-brand active:opacity-70">
+                Sair
+              </button>
+            </form>
+          </div>
+        </div>
         <AdminNav />
         <div className="mt-auto hidden flex-col gap-2 md:flex">
           <Link href="/portaria" className={btnSecondary}>
@@ -32,8 +45,8 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
           </div>
         </div>
       </aside>
-      <div className="flex-1 bg-muted/8">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-8 md:px-8">
+      <div className="min-w-0 flex-1 bg-muted/8">
+        <div className="mx-auto flex w-full max-w-6xl flex-col gap-5 px-4 pt-6 pb-[max(2rem,env(safe-area-inset-bottom))] sm:gap-6 md:px-8 md:py-8">
           {children}
         </div>
       </div>

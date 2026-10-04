@@ -52,7 +52,7 @@ export default async function IngressosAdminPage({ searchParams }: PageProps<"/a
         />
       </section>
 
-      <p className="text-sm text-cool-gray">
+      <p className="text-pretty text-sm text-cool-gray">
         Taxas do Mercado Pago: cartão de crédito {feeRateLabel("cartao")}, <strong className="font-medium text-ink">repassada ao cliente</strong>{" "}
         (você recebe o valor cheio do ingresso) · Pix {feeRateLabel("pix")}, absorvida.
       </p>
@@ -72,9 +72,9 @@ export default async function IngressosAdminPage({ searchParams }: PageProps<"/a
                 const sold = minQuantity(t);
                 const pct = t.quantity ? Math.min(100, Math.round((sold / t.quantity) * 100)) : 0;
                 return (
-                  <article key={t.id} className={`${card} flex flex-col gap-4 p-5`}>
+                  <article key={t.id} className={`${card} flex min-w-0 flex-col gap-4 p-4 sm:p-5`}>
                     <div className="flex items-start justify-between gap-3">
-                      <div className="flex flex-col gap-0.5">
+                      <div className="flex min-w-0 flex-col gap-0.5">
                         <h3 className="text-base font-semibold">{t.name}</h3>
                         {t.description && <p className="text-sm text-cool-gray">{t.description}</p>}
                         <p className="text-sm font-medium">{formatBRL(t.price_cents)}</p>
@@ -122,7 +122,8 @@ export default async function IngressosAdminPage({ searchParams }: PageProps<"/a
                         aria-valuemax={100}
                         aria-label="Ocupação do estoque"
                       >
-                        <div className="h-full rounded-full bg-brand" style={{ width: `${pct}%` }} />
+                        {/* A barra cresce da esquerda até a ocupação atual ao abrir a página. */}
+                        <div className="h-full origin-left animate-fill rounded-full bg-brand" style={{ width: `${pct}%` }} />
                       </div>
                       {t.redeemed > 0 && (
                         <span className="text-xs text-muted">{t.redeemed} já entraram (rasgados)</span>

@@ -38,9 +38,243 @@
   --shadow-micro: rgba(16, 24, 40, 0.04) 0px 1px 4px;
 }
 
+/*
+ * Movimento: desaceleração exponencial, saída mais rápida que a entrada.
+ * Feedback 100–150ms · mudança de estado 200–300ms · momento autoral até 750ms.
+ */
+@theme {
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Home: o escudo entra em foco e o restante do hero chega em sequência. */
+  --animate-shield: shield 750ms var(--ease-out-expo) backwards;
+  --animate-rise: rise 500ms var(--ease-out-expo) backwards;
+  /* Contagem regressiva: o dígito novo desce no lugar do anterior. */
+  --animate-digit: digit 320ms var(--ease-out-expo) backwards;
+  --animate-digit-up: digit-up 320ms var(--ease-out-expo) backwards;
+  /* Carrinho pronto: brilho único atravessando o botão (fica fora da área ao terminar). */
+  --animate-sweep: sweep 750ms 120ms var(--ease-out-expo) both;
+  /* Pedido pago: cada ingresso é "emitido" de cima para baixo. */
+  --animate-issue: issue 700ms var(--ease-out-expo) backwards;
+  --animate-qr-focus: qr-focus 500ms var(--ease-out-expo) backwards;
+  /* Pix gerado: o QR é revelado como um papel saindo da impressora. */
+  --animate-wipe: wipe 450ms var(--ease-out-expo) backwards;
+  /* Troca de painel, mensagens e overlays. */
+  --animate-panel: panel 220ms var(--ease-out-expo) backwards;
+  --animate-message: message 200ms var(--ease-out-expo) backwards;
+  --animate-fade: fade 150ms ease-out backwards;
+  /* Portaria: confirmação ou recusa legível em menos de 400ms. */
+  --animate-pop: pop 300ms var(--ease-out-expo) backwards;
+  --animate-draw: draw 280ms 80ms var(--ease-out-expo) backwards;
+  --animate-shake: shake 360ms ease-in-out backwards;
+  /* Dashboard: ocupação do estoque e leituras recém-chegadas. */
+  --animate-fill: fill 700ms var(--ease-out-expo) backwards;
+  --animate-flash: flash 1800ms ease-out backwards;
+
+  @keyframes shield {
+    from {
+      opacity: 0;
+      transform: scale(1.08);
+      filter: blur(10px);
+    }
+  }
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+  }
+  @keyframes digit {
+    from {
+      opacity: 0;
+      transform: translateY(-45%);
+    }
+  }
+  @keyframes digit-up {
+    from {
+      opacity: 0;
+      transform: translateY(45%);
+    }
+  }
+  @keyframes sweep {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(100%);
+    }
+  }
+  @keyframes issue {
+    from {
+      clip-path: inset(0 0 100% 0 round 20px);
+    }
+    to {
+      clip-path: inset(0 0 0 0 round 20px);
+    }
+  }
+  @keyframes qr-focus {
+    from {
+      opacity: 0;
+      filter: blur(6px);
+    }
+  }
+  @keyframes wipe {
+    from {
+      clip-path: inset(0 0 100% 0);
+    }
+    to {
+      clip-path: inset(0 0 0 0);
+    }
+  }
+  @keyframes panel {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+  }
+  @keyframes message {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+  }
+  @keyframes fade {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes pop {
+    from {
+      opacity: 0;
+      transform: scale(0.6);
+    }
+  }
+  @keyframes draw {
+    from {
+      stroke-dashoffset: 1;
+    }
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+  @keyframes shake {
+    20%,
+    60% {
+      transform: translateX(-10px);
+    }
+    40%,
+    80% {
+      transform: translateX(10px);
+    }
+  }
+  @keyframes fill {
+    from {
+      transform: scaleX(0);
+    }
+  }
+  @keyframes flash {
+    from {
+      background-color: var(--brand-subtle);
+    }
+  }
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scrollbar-color: var(--line) transparent;
+}
+
 body {
   background: var(--surface);
   color: var(--ink);
   font-family: var(--font-sans);
   line-height: 1.38;
+  caret-color: var(--brand);
+  accent-color: var(--brand);
+  -webkit-tap-highlight-color: transparent;
+}
+
+::selection {
+  background: var(--brand-subtle);
+  color: var(--ink);
+}
+
+/* Sem atraso de toque duplo em controles. */
+a,
+button,
+input,
+select,
+label {
+  touch-action: manipulation;
+}
+
+/*
+ * Tabelas do dashboard: no celular cada linha vira um bloco empilhado,
+ * com o rótulo da coluna (data-label) ao lado do valor.
+ */
+@media (width < 40rem) {
+  .table-stack thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .table-stack,
+  .table-stack tbody,
+  .table-stack tr,
+  .table-stack td {
+    display: block;
+  }
+  .table-stack tr {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    padding: 0.875rem 1.25rem;
+  }
+  .table-stack td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0;
+    text-align: right;
+  }
+  .table-stack td:not([data-label]) {
+    display: block;
+    text-align: left;
+  }
+  .table-stack td[data-label]::before {
+    content: attr(data-label);
+    flex-shrink: 0;
+    color: var(--cool-gray);
+    font-size: 0.75rem;
+    text-align: left;
+  }
+}
+
+/* Movimento reduzido: sem deslocamento, só a mudança de opacidade que carrega significado. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-shield,
+  .animate-rise,
+  .animate-digit,
+  .animate-digit-up,
+  .animate-issue,
+  .animate-qr-focus,
+  .animate-wipe,
+  .animate-panel,
+  .animate-message,
+  .animate-pop {
+    animation-name: fade;
+    animation-duration: 150ms;
+    animation-delay: 0ms !important;
+  }
+  .animate-shake,
+  .animate-fill,
+  .animate-draw {
+    animation: none;
+  }
+  .animate-sweep {
+    display: none;
+  }
 }

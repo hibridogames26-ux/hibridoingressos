@@ -14,7 +14,7 @@ export function InviteForm() {
   }, [state]);
 
   return (
-    <form ref={formRef} action={action} className={`${card} flex flex-col gap-4 p-5`}>
+    <form ref={formRef} action={action} className={`${card} flex flex-col gap-4 p-4 sm:p-5`}>
       <div className="flex flex-col gap-1">
         <h2 className="text-[22px] font-semibold leading-tight">Convidar pessoa</h2>
         <p className="text-sm text-cool-gray">
@@ -26,11 +26,11 @@ export function InviteForm() {
       <div className="grid gap-4 md:grid-cols-[1fr_1fr_auto_auto] md:items-end">
         <label className="flex flex-col gap-1.5">
           <span className={label}>Nome</span>
-          <input className={input} name="name" required maxLength={80} />
+          <input className={input} name="name" autoCapitalize="words" required maxLength={80} />
         </label>
         <label className="flex flex-col gap-1.5">
           <span className={label}>E-mail</span>
-          <input className={input} type="email" name="email" required />
+          <input className={input} type="email" name="email" autoCapitalize="none" spellCheck={false} required />
         </label>
         <label className="flex flex-col gap-1.5">
           <span className={label}>Perfil</span>

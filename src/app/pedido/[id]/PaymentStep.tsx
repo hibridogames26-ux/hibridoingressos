@@ -98,7 +98,7 @@ export function PaymentStep(props: Props) {
 
   if (props.inAnalysis) {
     return (
-      <div className={`${card} flex flex-col items-center gap-3 p-6 text-center`}>
+      <div className={`${card} flex flex-col items-center gap-3 p-5 text-center sm:p-6`}>
         <h2 className="text-[22px] font-semibold leading-tight">Pagamento em análise</h2>
         <p className="text-sm text-cool-gray">
           O Mercado Pago está analisando seu pagamento com cartão. Esta página atualiza sozinha e você também
@@ -117,17 +117,17 @@ export function PaymentStep(props: Props) {
         setMethod(value);
         setMessage(null);
       }}
-      className={`flex flex-1 flex-col items-start gap-0.5 rounded-xl border px-4 py-3 text-left transition ${
+      className={`flex min-h-12 items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left transition duration-200 active:scale-[0.98] sm:flex-col sm:items-start sm:justify-start sm:gap-0.5 ${
         method === value ? "border-brand bg-brand-subtle/40" : "border-line hover:border-brand-dark"
       }`}
     >
       <span className="text-sm font-semibold">{title}</span>
-      <span className="text-lg font-bold tabular-nums">{formatBRL(amount)}</span>
+      <span className="text-base font-bold tabular-nums sm:text-lg">{formatBRL(amount)}</span>
     </button>
   );
 
   return (
-    <div className={`${card} flex flex-col gap-5 p-5`}>
+    <div className={`${card} flex flex-col gap-5 p-4 sm:p-5`}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-[22px] font-semibold leading-tight">Forma de pagamento</h2>
         {reservationLeft !== null && reservationLeft > 0 && (
@@ -137,7 +137,7 @@ export function PaymentStep(props: Props) {
         )}
       </div>
 
-      <div className="flex gap-3" role="tablist" aria-label="Forma de pagamento">
+      <div className="grid gap-2 sm:grid-cols-2 sm:gap-3" role="tablist" aria-label="Forma de pagamento">
         {tab("pix", "Pix", props.pixCents)}
         {tab("cartao", "Cartão de crédito", props.cardCents)}
       </div>
@@ -145,7 +145,7 @@ export function PaymentStep(props: Props) {
       {message && <FormMessage tone={message.tone}>{message.text}</FormMessage>}
 
       {method === "pix" ? (
-        <div className="flex flex-col items-center gap-4 text-center" role="tabpanel">
+        <div key="pix" className="flex animate-panel flex-col items-center gap-4 text-center" role="tabpanel">
           {!pix ? (
             <>
               <p className="text-sm text-cool-gray">
@@ -163,15 +163,17 @@ export function PaymentStep(props: Props) {
                 alt="QR Code Pix"
                 width={220}
                 height={220}
-                className="rounded-xl border border-line"
+                className="aspect-square w-[220px] max-w-full animate-wipe rounded-xl border border-line"
               />
-              <div className="flex w-full flex-col gap-2">
+              <div style={{ animationDelay: "150ms" }} className="flex w-full animate-rise flex-col gap-2">
                 <span className="text-sm font-medium">Pix copia e cola</span>
                 <code className="block max-h-20 overflow-y-auto break-all rounded-xl bg-muted/8 p-3 text-left text-xs">
                   {pix.qrCode}
                 </code>
                 <button className={btnOutline} onClick={copy}>
-                  {copied ? "Copiado!" : "Copiar código Pix"}
+                  <span key={String(copied)} className="animate-message">
+                    {copied ? "Copiado!" : "Copiar código Pix"}
+                  </span>
                 </button>
               </div>
               <p className="flex items-center gap-2 text-sm text-cool-gray" aria-live="polite">
@@ -183,7 +185,7 @@ export function PaymentStep(props: Props) {
           )}
         </div>
       ) : (
-        <div className="flex flex-col gap-4" role="tabpanel">
+        <div key="cartao" className="flex animate-panel flex-col gap-4" role="tabpanel">
           <dl className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 rounded-xl bg-muted/8 p-4 text-sm">
             <dt className="text-cool-gray">Ingressos</dt>
             <dd className="text-right tabular-nums">{formatBRL(props.pixCents)}</dd>

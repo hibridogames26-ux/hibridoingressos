@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useActionState, useEffect, useRef } from "react";
 import { FormMessage } from "@/components/AuthShell";
-import { btnPrimary, card, input, label } from "@/components/ui/styles";
+import { btnPrimary, card, input, label, textLink } from "@/components/ui/styles";
 import type { TicketTypeRow } from "@/lib/ticket-types";
 import { saveTicketType } from "./actions";
 
@@ -28,7 +28,7 @@ export function TicketTypeForm({
       ref={formRef}
       action={action}
       key={editing?.id ?? "novo"}
-      className={`${card} flex flex-col gap-4 p-5`}
+      className={`${card} flex flex-col gap-4 p-4 sm:p-5`}
     >
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="flex flex-col gap-1">
@@ -40,7 +40,7 @@ export function TicketTypeForm({
           </p>
         </div>
         {editing && (
-          <Link href="/admin/ingressos" className="text-sm text-brand hover:underline">
+          <Link href="/admin/ingressos" className={textLink}>
             Cancelar edição
           </Link>
         )}
@@ -98,7 +98,7 @@ export function TicketTypeForm({
             <span className="text-xs text-muted">Mínimo {minQuantity} (já vendidos)</span>
           )}
         </label>
-        <label className="flex items-center gap-2 self-center pt-6">
+        <label className="flex min-h-11 items-center gap-2 md:self-center md:pt-6">
           <input
             type="checkbox"
             name="active"
@@ -109,7 +109,7 @@ export function TicketTypeForm({
         </label>
       </div>
 
-      <div>
+      <div className="grid sm:block">
         <button className={btnPrimary} disabled={pending}>
           {pending ? "Salvando…" : editing ? "Salvar alterações" : "Cadastrar ingresso"}
         </button>

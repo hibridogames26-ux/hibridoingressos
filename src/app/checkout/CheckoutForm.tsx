@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useActionState, useState } from "react";
 import { FormMessage } from "@/components/AuthShell";
-import { btnPrimary, card, input, label } from "@/components/ui/styles";
+import { btnPrimary, card, input, label, textLink } from "@/components/ui/styles";
 import { chargeCents } from "@/config/fees";
 import { formatCpf } from "@/lib/checkout";
 import { formatBRL, formatEventDate } from "@/lib/format";
@@ -18,7 +18,7 @@ export type CheckoutLine = {
 };
 
 function FieldError({ message }: { message?: string }) {
-  return message ? <span className="text-xs text-danger-ink">{message}</span> : null;
+  return message ? <span className="animate-message text-xs text-danger-ink">{message}</span> : null;
 }
 
 export function CheckoutForm({ lines, itens }: { lines: CheckoutLine[]; itens: string }) {
@@ -38,7 +38,7 @@ export function CheckoutForm({ lines, itens }: { lines: CheckoutLine[]; itens: s
       <div className="flex flex-col gap-6">
         {state?.error && <FormMessage tone="error">{state.error}</FormMessage>}
 
-        <fieldset className={`${card} flex flex-col gap-4 p-5`}>
+        <fieldset className={`${card} flex flex-col gap-4 p-4 sm:p-5`}>
           <legend className="sr-only">Dados do comprador</legend>
           <h2 className="text-[22px] font-semibold leading-tight">Dados do comprador</h2>
           <label className="flex flex-col gap-1.5">
@@ -47,6 +47,8 @@ export function CheckoutForm({ lines, itens }: { lines: CheckoutLine[]; itens: s
               className={input}
               name="name"
               autoComplete="name"
+              autoCapitalize="words"
+              enterKeyHint="next"
               required
               value={buyerName}
               onChange={(e) => setBuyerName(e.target.value)}
@@ -61,6 +63,9 @@ export function CheckoutForm({ lines, itens }: { lines: CheckoutLine[]; itens: s
               type="email"
               name="email"
               autoComplete="email"
+              autoCapitalize="none"
+              spellCheck={false}
+              enterKeyHint="next"
               required
               defaultValue={values.email}
               aria-invalid={!!errors.email}
@@ -75,6 +80,7 @@ export function CheckoutForm({ lines, itens }: { lines: CheckoutLine[]; itens: s
                 className={input}
                 name="cpf"
                 inputMode="numeric"
+                enterKeyHint="next"
                 required
                 value={cpf}
                 onChange={(e) => setCpf(formatCpf(e.target.value))}
@@ -91,6 +97,7 @@ export function CheckoutForm({ lines, itens }: { lines: CheckoutLine[]; itens: s
                 name="phone"
                 autoComplete="tel"
                 inputMode="tel"
+                enterKeyHint="next"
                 required
                 placeholder="(83) 99999-0000"
                 defaultValue={values.phone}
@@ -101,7 +108,7 @@ export function CheckoutForm({ lines, itens }: { lines: CheckoutLine[]; itens: s
           </div>
         </fieldset>
 
-        <fieldset className={`${card} flex flex-col gap-4 p-5`}>
+        <fieldset className={`${card} flex flex-col gap-4 p-4 sm:p-5`}>
           <legend className="sr-only">Titulares dos ingressos</legend>
           <div className="flex flex-col gap-1">
             <h2 className="text-[22px] font-semibold leading-tight">Quem vai usar cada ingresso</h2>
@@ -120,6 +127,7 @@ export function CheckoutForm({ lines, itens }: { lines: CheckoutLine[]; itens: s
                   <input
                     className={input}
                     name={field}
+                    autoCapitalize="words"
                     required
                     placeholder="Nome e sobrenome"
                     {...(isFirst
@@ -135,7 +143,7 @@ export function CheckoutForm({ lines, itens }: { lines: CheckoutLine[]; itens: s
         </fieldset>
       </div>
 
-      <aside className={`${card} flex flex-col gap-4 p-5 lg:sticky lg:top-4`}>
+      <aside className={`${card} flex flex-col gap-4 p-4 sm:p-5 lg:sticky lg:top-4`}>
         <h2 className="text-[22px] font-semibold leading-tight">Resumo</h2>
         <ul className="flex flex-col gap-3 text-sm">
           {lines.map((l) => (
@@ -162,7 +170,7 @@ export function CheckoutForm({ lines, itens }: { lines: CheckoutLine[]; itens: s
           {pending ? "Reservando…" : "Ir para o pagamento"}
         </button>
         <p className="text-xs text-muted">Seus ingressos ficam reservados por 30 minutos.</p>
-        <Link href="/ingressos" className="text-center text-sm text-brand hover:underline">
+        <Link href="/ingressos" className={textLink}>
           Alterar ingressos
         </Link>
       </aside>

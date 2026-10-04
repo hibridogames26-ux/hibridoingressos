@@ -43,10 +43,11 @@ export function StockActions({
         }}
       >
         <input
-          className="w-28 rounded-xl border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-muted focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand-subtle"
+          className="w-28 min-w-0 flex-1 rounded-xl border border-line bg-surface px-3 py-2 text-base text-ink placeholder:text-muted transition-[border-color,box-shadow] duration-150 focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand-subtle sm:flex-none sm:text-sm"
           type="number"
           min={1}
           step={1}
+          inputMode="numeric"
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
           placeholder="+ qtd"
@@ -71,7 +72,7 @@ export function StockActions({
         {canDelete &&
           (confirmDelete ? (
             <button
-              className={`${btnSecondary} text-danger-ink`}
+              className={`${btnSecondary} animate-message bg-danger/12 text-danger-ink hover:bg-danger/16`}
               disabled={pending}
               onClick={() => run(() => deleteTicketType(id))}
             >
@@ -84,7 +85,7 @@ export function StockActions({
           ))}
       </div>
       {message && (
-        <p role="status" className="text-xs text-cool-gray">
+        <p role="status" className="animate-message text-xs text-cool-gray">
           {message}
         </p>
       )}

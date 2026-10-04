@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PublicHeader, Steps } from "@/components/PublicHeader";
-import { card } from "@/components/ui/styles";
+import { card, textLink } from "@/components/ui/styles";
 import { chargeCents, surchargeCents } from "@/config/fees";
 import { mercadoPagoPublicKey } from "@/lib/env";
 import { formatBRL, formatEventDate } from "@/lib/format";
@@ -18,7 +18,7 @@ export const dynamic = "force-dynamic";
 
 function Summary({ order }: { order: BuyerOrder }) {
   return (
-    <aside className={`${card} flex flex-col gap-3 p-5`}>
+    <aside className={`${card} flex flex-col gap-3 p-4 sm:p-5`}>
       <h2 className="text-[22px] font-semibold leading-tight">Resumo</h2>
       <ul className="flex flex-col gap-3 text-sm">
         {order.order_items.map((item, i) => (
@@ -30,7 +30,7 @@ function Summary({ order }: { order: BuyerOrder }) {
               </span>
               <span className="tabular-nums">{formatBRL(item.quantity * item.unit_price_cents)}</span>
             </div>
-            <span className="text-xs text-cool-gray">{item.holder_names.join(", ")}</span>
+            <span className="break-words text-xs text-cool-gray">{item.holder_names.join(", ")}</span>
           </li>
         ))}
       </ul>
@@ -65,7 +65,7 @@ export default async function PedidoPage({ params, searchParams }: PageProps<"/p
   return (
     <main className="flex flex-1 flex-col bg-muted/8">
       <PublicHeader />
-      <section className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-8">
+      <section className="mx-auto flex w-full max-w-5xl flex-col gap-5 px-4 py-6 pb-[max(2rem,env(safe-area-inset-bottom))] sm:gap-6 sm:py-8">
         <Steps current={3} />
 
         {order.status === "pago" && (
@@ -88,7 +88,7 @@ export default async function PedidoPage({ params, searchParams }: PageProps<"/p
 
         {order.status === "pendente" && (
           <>
-            <h1 className="font-display text-4xl font-bold leading-[1.22] tracking-[-0.5px]">Pagamento</h1>
+            <h1 className="font-display text-[1.75rem] font-bold leading-[1.22] tracking-[-0.5px] sm:text-4xl">Pagamento</h1>
             <div className="grid gap-6 lg:grid-cols-[1fr_320px] lg:items-start">
               <PaymentStep
                 orderId={order.id}
@@ -108,8 +108,8 @@ export default async function PedidoPage({ params, searchParams }: PageProps<"/p
         )}
 
         {(order.status === "cancelado" || order.status === "estornado") && (
-          <div className={`${card} flex flex-col items-center gap-3 px-6 py-12 text-center`}>
-            <h1 className="text-[28px] font-bold leading-tight">
+          <div className={`${card} flex animate-rise flex-col items-center gap-3 px-5 py-10 text-center sm:px-6 sm:py-12`}>
+            <h1 className="text-balance text-[28px] font-bold leading-tight">
               {order.status === "cancelado" ? "Reserva expirada" : "Pedido estornado"}
             </h1>
             <p className="max-w-md text-sm text-cool-gray">
@@ -117,7 +117,7 @@ export default async function PedidoPage({ params, searchParams }: PageProps<"/p
                 ? "O tempo para pagamento acabou e os ingressos voltaram à venda. Nenhuma cobrança foi feita."
                 : "O pagamento deste pedido foi devolvido e os ingressos foram cancelados."}
             </p>
-            <Link href="/ingressos" className="text-sm text-brand hover:underline">
+            <Link href="/ingressos" className={textLink}>
               Fazer novo pedido
             </Link>
           </div>

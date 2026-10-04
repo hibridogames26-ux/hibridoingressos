@@ -26,8 +26,8 @@ export function StaffActions({
     });
 
   return (
-    <div className="flex flex-col items-end gap-1">
-      <div className="flex flex-wrap justify-end gap-2">
+    <div className="flex flex-col items-start gap-1 sm:items-end">
+      <div className="flex flex-wrap gap-2 sm:justify-end">
         <button className={btnSecondary} disabled={pending} onClick={() => run(() => resendAccess(userId))}>
           Reenviar acesso
         </button>
@@ -42,7 +42,7 @@ export function StaffActions({
         )}
       </div>
       {message && (
-        <p role="status" className="text-xs text-cool-gray">
+        <p role="status" className="animate-message text-xs text-cool-gray">
           {message}
         </p>
       )}

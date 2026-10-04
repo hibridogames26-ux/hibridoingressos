@@ -6,9 +6,12 @@ import { card } from "@/components/ui/styles";
 import { formatDateTime, formatTime } from "@/lib/format";
 import type { ScanResult } from "@/lib/labels";
 import { createClient } from "@/lib/supabase/server";
-import { hoursAgoIso } from "@/lib/time";
+import { hoursAgoIso, isRecent } from "@/lib/time";
 
 export const metadata: Metadata = { title: "Entradas — Dashboard" };
+
+/** Janela um pouco maior que o intervalo do auto-refresh (5s). */
+const FRESH_MS = 8000;
 
 type ScanRow = {
   id: number;
@@ -68,14 +71,19 @@ export default async function EntradasPage() {
               </thead>
               <tbody>
                 {scans.map((s) => (
-                  <tr key={s.id} className={trCls}>
-                    <td className={`${tdCls} whitespace-nowrap tabular-nums`} title={formatDateTime(s.created_at)}>
+                  // Leitura recém-chegada pelo auto-refresh acende por um instante (só ao montar a linha).
+                  <tr key={s.id} className={`${trCls} ${isRecent(s.created_at, FRESH_MS) ? "animate-flash" : ""}`}>
+                    <td
+                      data-label="Hora"
+                      className={`${tdCls} whitespace-nowrap tabular-nums`}
+                      title={formatDateTime(s.created_at)}
+                    >
                       {formatTime(s.created_at)}
                     </td>
-                    <td className={tdCls}>
+                    <td data-label="Resultado" className={tdCls}>
                       <ScanResultBadge result={s.result} />
                     </td>
-                    <td className={tdCls}>
+                    <td data-label="Titular" className={tdCls}>
                       {s.ticket ? (
                         <>
                           <div className="font-medium">{s.ticket.holder_name}</div>
@@ -85,10 +93,10 @@ export default async function EntradasPage() {
                         <span className="text-muted">—</span>
                       )}
                     </td>
-                    <td className={`${tdCls} font-mono text-xs`}>
+                    <td data-label="Código" className={`${tdCls} font-mono text-xs`}>
                       {s.ticket?.short_code ?? s.code.slice(0, 16)}
                     </td>
-                    <td className={tdCls}>{s.scanner?.name ?? "—"}</td>
+                    <td data-label="Staff" className={tdCls}>{s.scanner?.name ?? "—"}</td>
                   </tr>
                 ))}
               </tbody>
