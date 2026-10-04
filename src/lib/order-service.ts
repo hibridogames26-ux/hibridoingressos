@@ -128,11 +128,14 @@ export async function sendTicketsEmailOnce(orderId: string) {
       to: order.buyer_email,
       buyerName: order.buyer_name,
       orderUrl: orderUrl(order),
+      paymentMethod: order.payment_method,
+      totalCents: order.total_cents,
       tickets: order.tickets.map((t) => ({
         holderName: t.holder_name,
         ticketType: t.ticket_types?.name ?? "Ingresso",
         eventDate: t.ticket_types?.event_date ?? "",
         shortCode: t.short_code,
+        token: t.token,
       })),
     });
     if (!sent) {
