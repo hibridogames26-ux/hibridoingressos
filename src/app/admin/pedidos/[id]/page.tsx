@@ -59,11 +59,15 @@ export default async function PedidoPage({ params }: PageProps<"/admin/pedidos/[
     ["Telefone", order.buyer_phone ?? "—"],
     ["Pagamento", order.payment_method ? paymentMethodLabel[order.payment_method] : "—"],
     ["ID Mercado Pago", order.mp_payment_id ?? "—"],
-    ["Total", formatBRL(order.total_cents)],
+    ["Status no Mercado Pago", order.mp_status ? `${order.mp_status}${order.mp_status_detail ? ` (${order.mp_status_detail})` : ""}` : "—"],
+    ["Ingressos (subtotal)", formatBRL(order.subtotal_cents)],
+    ["Acréscimo do cartão", formatBRL(Math.max(0, order.total_cents - order.subtotal_cents))],
+    ["Total cobrado", formatBRL(order.total_cents)],
     ["Taxas", formatBRL(order.fee_cents)],
     ["Líquido", formatBRL(order.net_cents)],
     ["Criado em", formatDateTime(order.created_at)],
     ["Pago em", formatDateTime(order.paid_at)],
+    ...(order.status === "pendente" ? ([["Reserva até", formatDateTime(order.expires_at)]] as [string, React.ReactNode][]) : []),
   ];
 
   return (

@@ -18,6 +18,10 @@ export type OrderRow = {
   fee_cents: number;
   net_cents: number;
   mp_payment_id: string | null;
+  mp_status: string | null;
+  mp_status_detail: string | null;
+  subtotal_cents: number;
+  expires_at: string | null;
   paid_at: string | null;
   created_at: string;
 };

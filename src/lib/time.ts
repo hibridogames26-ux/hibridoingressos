@@ -10,3 +10,13 @@ export function startOfTodaySaoPaulo(now = Date.now()) {
   local.setUTCHours(0, 0, 0, 0);
   return new Date(local.getTime() + offsetMs).toISOString();
 }
+
+/** Reserva vencida? (cartão em análise mantém a reserva). */
+export function isReservationExpired(
+  order: { expires_at: string | null; mp_status: string | null },
+  now = Date.now(),
+) {
+  if (!order.expires_at) return false;
+  if (order.mp_status === "in_process" || order.mp_status === "authorized") return false;
+  return Date.parse(order.expires_at) < now;
+}

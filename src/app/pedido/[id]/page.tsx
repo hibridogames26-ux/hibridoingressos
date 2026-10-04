@@ -1,0 +1,124 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { PublicHeader, Steps } from "@/components/PublicHeader";
+import { card } from "@/components/ui/styles";
+import { chargeCents, surchargeCents } from "@/config/fees";
+import { formatBRL, formatEventDate } from "@/lib/format";
+import { getOrderForBuyer, syncOrderWithMp, type BuyerOrder } from "@/lib/order-service";
+import { createAdminClient } from "@/lib/supabase/server";
+import { isReservationExpired } from "@/lib/time";
+import { PaymentStep } from "./PaymentStep";
+import { Tickets } from "./Tickets";
+
+export const metadata: Metadata = { title: "Seu pedido — Híbrido Games 2026", robots: { index: false } };
+export const dynamic = "force-dynamic";
+
+function Summary({ order }: { order: BuyerOrder }) {
+  return (
+    <aside className={`${card} flex flex-col gap-3 p-5`}>
+      <h2 className="text-[22px] font-semibold leading-tight">Resumo</h2>
+      <ul className="flex flex-col gap-3 text-sm">
+        {order.order_items.map((item, i) => (
+          <li key={i} className="flex flex-col gap-1">
+            <div className="flex justify-between gap-3">
+              <span>
+                {item.quantity}× {item.ticket_types?.name}
+                <span className="block text-xs text-muted">{formatEventDate(item.ticket_types?.event_date)}</span>
+              </span>
+              <span className="tabular-nums">{formatBRL(item.quantity * item.unit_price_cents)}</span>
+            </div>
+            <span className="text-xs text-cool-gray">{item.holder_names.join(", ")}</span>
+          </li>
+        ))}
+      </ul>
+      <p className="border-t border-line pt-3 text-xs text-muted">
+        Comprador: {order.buyer_name} · {order.buyer_email}
+      </p>
+    </aside>
+  );
+}
+
+export default async function PedidoPage({ params, searchParams }: PageProps<"/pedido/[id]">) {
+  const { id } = await params;
+  const { k } = await searchParams;
+  const key = typeof k === "string" ? k : undefined;
+
+  let order = await getOrderForBuyer(id, key);
+  if (!order) notFound();
+
+  if (order.status === "pendente") {
+    // Confirma pagamentos feitos enquanto a página estava fechada.
+    const synced = await syncOrderWithMp(id).catch((e) => {
+      console.error("Error syncing order:", e);
+      return null;
+    });
+    if (synced && synced !== "pendente") order = (await getOrderForBuyer(id, key))!;
+    else if (isReservationExpired(order)) {
+      await createAdminClient().rpc("release_expired_orders");
+      order = (await getOrderForBuyer(id, key))!;
+    }
+  }
+
+  return (
+    <main className="flex flex-1 flex-col bg-muted/8">
+      <PublicHeader />
+      <section className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-8">
+        <Steps current={3} />
+
+        {order.status === "pago" && (
+          <>
+            <div className="flex flex-col gap-2">
+              <span className="w-fit rounded-md bg-success/16 px-2 py-0.5 text-xs font-medium text-success-ink">
+                Pagamento aprovado
+              </span>
+              <h1 className="font-display text-4xl font-bold leading-[1.22] tracking-[-0.5px]">Seus ingressos</h1>
+              <p className="text-sm text-cool-gray">
+                Enviamos este link para {order.buyer_email}. Apresente o QR Code na entrada para receber a pulseira.
+                Cada ingresso só pode ser lido uma vez: não compartilhe prints.
+              </p>
+            </div>
+            <Tickets order={order} />
+          </>
+        )}
+
+        {order.status === "pendente" && (
+          <>
+            <h1 className="font-display text-4xl font-bold leading-[1.22] tracking-[-0.5px]">Pagamento</h1>
+            <div className="grid gap-6 lg:grid-cols-[1fr_320px] lg:items-start">
+              <PaymentStep
+                orderId={order.id}
+                accessKey={order.access_key}
+                pixCents={chargeCents("pix", order.subtotal_cents)}
+                cardCents={chargeCents("cartao", order.subtotal_cents)}
+                surchargeCents={surchargeCents("cartao", order.subtotal_cents)}
+                expiresAt={order.expires_at}
+                inAnalysis={order.mp_status === "in_process" || order.mp_status === "authorized"}
+                buyerEmail={order.buyer_email}
+                buyerCpf={order.buyer_cpf}
+                publicKey={process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY ?? ""}
+              />
+              <Summary order={order} />
+            </div>
+          </>
+        )}
+
+        {(order.status === "cancelado" || order.status === "estornado") && (
+          <div className={`${card} flex flex-col items-center gap-3 px-6 py-12 text-center`}>
+            <h1 className="text-[28px] font-bold leading-tight">
+              {order.status === "cancelado" ? "Reserva expirada" : "Pedido estornado"}
+            </h1>
+            <p className="max-w-md text-sm text-cool-gray">
+              {order.status === "cancelado"
+                ? "O tempo para pagamento acabou e os ingressos voltaram à venda. Nenhuma cobrança foi feita."
+                : "O pagamento deste pedido foi devolvido e os ingressos foram cancelados."}
+            </p>
+            <Link href="/ingressos" className="text-sm text-brand hover:underline">
+              Fazer novo pedido
+            </Link>
+          </div>
+        )}
+      </section>
+    </main>
+  );
+}
