@@ -193,14 +193,14 @@ async function sendViaResend(message: EmailMessage) {
   if (error) throw new Error(error.message);
 }
 
-/** Envia o e-mail de ingressos; retorna false se nenhum provedor estiver configurado. */
-export async function sendTicketsEmail(data: TicketEmailData) {
+/** Monta e entrega a mensagem pelo provedor configurado; retorna false se não houver nenhum. */
+async function deliver(build: () => EmailMessage | Promise<EmailMessage>) {
   const provider = emailProvider();
   if (!provider) {
     console.warn("Nenhum provedor de e-mail configurado (GMAIL_USER/GMAIL_APP_PASSWORD): e-mail não enviado.");
     return false;
   }
-  const message = await buildTicketEmail(data);
+  const message = await build();
   try {
     if (provider === "gmail") await sendViaGmail(message);
     else await sendViaResend(message);
@@ -209,3 +209,107 @@ export async function sendTicketsEmail(data: TicketEmailData) {
   }
   return true;
 }
+
+/** Envia o e-mail de ingressos; retorna false se nenhum provedor estiver configurado. */
+export const sendTicketsEmail = (data: TicketEmailData) => deliver(() => buildTicketEmail(data));
+
+// ---------------------------------------------------------------------------
+// Camisa oficial sob encomenda
+// ---------------------------------------------------------------------------
+export type ShirtEmailData = {
+  to: string;
+  buyerName: string;
+  orderUrl: string;
+  code: string;
+  productName: string;
+  size: string;
+  quantity: number;
+  paymentMethod: PaymentMethod | null;
+  totalCents: number;
+  /** Condições aceitas na compra (snapshot da encomenda). */
+  leadTime: string;
+  receiptDetails: string;
+};
+
+/** Confirma o pagamento e deixa claro que a camisa é sob encomenda: ainda não está pronta. */
+export function shirtEmailHtml(data: Omit<ShirtEmailData, "to">) {
+  // Total zero = cupom de 100%: não houve pagamento.
+  const free = data.totalCents === 0;
+  const paidLine = free
+    ? "Sem pagamento · cupom de 100%"
+    : [
+        "Pagamento confirmado",
+        data.paymentMethod ? paymentMethodLabel[data.paymentMethod] : null,
+        formatBRL(data.totalCents),
+      ]
+        .filter(Boolean)
+        .join(" · ");
+  const row = (label: string, value: string) =>
+    `<tr><td style="padding:6px 0;font-family:${FONT};font-size:12px;color:#686b82;width:130px;vertical-align:top">${escapeHtml(label)}</td><td style="padding:6px 0;font-family:${FONT};font-size:15px;font-weight:600;color:#101114">${escapeHtml(value)}</td></tr>`;
+
+  return `<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Encomenda confirmada</title></head>
+<body style="margin:0;padding:0;background:#f4f4f7">
+<div style="display:none;max-height:0;overflow:hidden">${free ? "Encomenda confirmada" : "Pagamento confirmado"} da sua camisa oficial. Ela é feita sob encomenda e ainda não está pronta.</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f7"><tr><td align="center" style="padding:24px 12px">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border:1px solid #dedee5;border-radius:16px;border-collapse:separate">
+    <tr>
+      <td style="background:${ACCENT};padding:26px 32px;border-radius:15px 15px 0 0">
+        <div style="font-family:${FONT};font-size:22px;font-weight:700;color:#ffffff">Encomenda confirmada</div>
+        <div style="font-family:${FONT};font-size:14px;color:#ffffff;opacity:0.9;margin-top:4px">${escapeHtml(paidLine)}</div>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:26px 32px 30px;font-family:${FONT};color:#101114">
+        <p style="margin:0 0 20px;font-size:16px;line-height:1.5;color:#484b5e">Olá, ${escapeHtml(firstName(data.buyerName))}! ${free ? "Confirmamos a encomenda" : "Recebemos o pagamento"} da sua camisa oficial do ${escapeHtml(event.name)} ${event.year}.</p>
+        <div style="background:rgba(133,91,251,0.16);border-radius:12px;padding:14px 16px;font-size:14px;line-height:1.6;color:#101114;margin:0 0 20px"><strong>Sob encomenda.</strong> A camisa ainda não está pronta. Você acompanha cada etapa da produção e do recebimento na página do pedido.</div>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #dedee5;border-bottom:1px solid #dedee5;margin:0 0 20px">
+          ${row("Pedido", data.code)}
+          ${row("Produto", data.productName)}
+          ${row("Tamanho", data.size)}
+          ${row("Quantidade", String(data.quantity))}
+          ${row("Prazo de produção", data.leadTime)}
+          ${row("Recebimento", data.receiptDetails)}
+        </table>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:4px 0 8px">
+          <a href="${escapeHtml(data.orderUrl)}" style="display:inline-block;border:1px solid #5741d8;color:#5741d8;font-family:${FONT};font-size:15px;font-weight:600;text-decoration:none;border-radius:12px;padding:13px 24px">Acompanhar minha encomenda</a>
+        </td></tr></table>
+      </td>
+    </tr>
+  </table>
+  <div style="font-family:${FONT};font-size:12px;color:#686b82;padding:16px 20px 0;text-align:center">${escapeHtml(event.name)} ${event.year} · ${escapeHtml(event.tagline)} · ${escapeHtml(event.endorsement)}</div>
+</td></tr></table>
+</body>
+</html>`;
+}
+
+export function shirtEmailText(data: Omit<ShirtEmailData, "to">) {
+  return [
+    `Olá, ${firstName(data.buyerName)}! ${data.totalCents === 0 ? "Confirmamos a encomenda" : "Recebemos o pagamento"} da sua camisa oficial do ${event.name} ${event.year}.`,
+    "",
+    "Sob encomenda: a camisa ainda não está pronta. Acompanhe a produção e o recebimento na página do pedido.",
+    "",
+    `Pedido: ${data.code}`,
+    `Produto: ${data.productName}`,
+    `Tamanho: ${data.size}`,
+    `Quantidade: ${data.quantity}`,
+    `Prazo de produção: ${data.leadTime}`,
+    `Recebimento: ${data.receiptDetails}`,
+    "",
+    `Acompanhe sua encomenda: ${data.orderUrl}`,
+  ].join("\n");
+}
+
+export function buildShirtEmail(data: ShirtEmailData): EmailMessage {
+  return {
+    to: data.to,
+    subject: `Encomenda confirmada: camisa oficial — ${event.name} ${event.year}`,
+    html: shirtEmailHtml(data),
+    text: shirtEmailText(data),
+    inline: [],
+  };
+}
+
+/** Envia a confirmação da encomenda; retorna false se nenhum provedor estiver configurado. */
+export const sendShirtOrderEmail = (data: ShirtEmailData) => deliver(() => buildShirtEmail(data));

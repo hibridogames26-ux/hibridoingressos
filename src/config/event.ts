@@ -1,8 +1,14 @@
+import { SHIRT_PATH, SHIRT_PHOTOS } from "@/config/shirts";
+
 export type EventLink = {
   label: string;
   description?: string;
   /** Vazio = ainda não definido; o botão aparece desabilitado ("Em breve"). */
   href: string;
+  /** Miniatura à esquerda do texto (imagem decorativa; o rótulo já descreve o link). */
+  thumbnail?: string;
+  /** Selo ao lado da seta, ex.: "Sob encomenda". */
+  badge?: string;
 };
 
 export const event = {
@@ -23,6 +29,13 @@ export const ticketsHref = "/ingressos";
 
 // TODO(links reais): Instagram, WhatsApp, regulamento, mapa, FPF3.
 export const links: EventLink[] = [
+  {
+    label: "Camisa oficial do evento",
+    description: "Veja as fotos e escolha seu tamanho",
+    href: SHIRT_PATH,
+    thumbnail: SHIRT_PHOTOS[0].src,
+    badge: "Sob encomenda",
+  },
   { label: "Instagram", description: "Acompanhe os bastidores", href: "" },
   { label: "WhatsApp", description: "Fale com a organização", href: "" },
   { label: "Regulamento", description: "Regras e categorias", href: "" },

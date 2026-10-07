@@ -10,6 +10,8 @@ import {
   searchPaymentsByOrder,
   type MpPayment,
 } from "@/lib/mercadopago";
+import { parsePaymentRef } from "@/lib/payment-ref";
+import { applyShirtMpPayment } from "@/lib/shirt-order-service";
 import { createAdminClient } from "@/lib/supabase/server";
 
 export type BuyerOrder = {
@@ -73,8 +75,12 @@ export async function getOrderForBuyer(id: string, key: string | undefined): Pro
 export const orderUrl = (order: Pick<BuyerOrder, "id" | "access_key">) =>
   `${siteUrl()}/pedido/${order.id}?k=${order.access_key}`;
 
-/** Aplica um pagamento do MP ao pedido (idempotente) e dispara o e-mail se ficou pago. */
+/** Aplica um pagamento do MP ao pedido (idempotente) e dispara o e-mail se ficou pago. Despacha camisas para o serviço próprio. */
 export async function applyMpPayment(payment: MpPayment): Promise<OrderStatus | null> {
+  // Pagamentos de camisa ("shirt:<uuid>") seguem um fluxo próprio, sem tocar em ingressos.
+  const ref = parsePaymentRef(payment.external_reference);
+  if (ref?.kind === "shirt") return applyShirtMpPayment(payment, ref.id);
+
   const orderId = payment.external_reference;
   if (!orderId || !UUID.test(orderId)) return null;
 

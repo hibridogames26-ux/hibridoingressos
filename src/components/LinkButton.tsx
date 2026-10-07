@@ -1,4 +1,6 @@
+import Image from "next/image";
 import type { EventLink } from "@/config/event";
+import { SHIRT_PHOTO_SIZE } from "@/config/shirts";
 
 const base =
   "flex min-h-14 w-full items-center justify-between gap-4 rounded-xl px-4 py-[13px] text-left transition duration-150";
@@ -22,7 +24,7 @@ function Chevron() {
   );
 }
 
-export function LinkButton({ label, description, href }: EventLink) {
+export function LinkButton({ label, description, href, thumbnail, badge }: EventLink) {
   const text = (
     <span className="flex flex-col">
       <span className="text-base font-semibold">{label}</span>
@@ -53,7 +55,20 @@ export function LinkButton({ label, description, href }: EventLink) {
       {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
       className={`${base} group border border-line bg-surface shadow-whisper hover:border-brand-dark active:scale-[0.99] active:border-brand-dark active:bg-brand-subtle/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand`}
     >
-      {text}
+      {thumbnail && (
+        <Image
+          src={thumbnail}
+          alt=""
+          width={SHIRT_PHOTO_SIZE.width}
+          height={SHIRT_PHOTO_SIZE.height}
+          sizes="44px"
+          className="h-14 w-11 shrink-0 rounded-lg border border-line bg-muted/8 object-cover"
+        />
+      )}
+      <span className="min-w-0 flex-1">{text}</span>
+      {badge && (
+        <span className="shrink-0 rounded-md bg-brand-subtle px-2 py-0.5 text-xs font-medium text-brand-dark">{badge}</span>
+      )}
       <Chevron />
     </a>
   );

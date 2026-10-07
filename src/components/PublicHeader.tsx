@@ -35,8 +35,13 @@ function Check() {
   );
 }
 
-export function Steps({ current }: { current: 1 | 2 | 3 }) {
-  const steps = ["Ingressos", "Seus dados", "Pagamento"];
+export function Steps({
+  current,
+  steps = ["Ingressos", "Seus dados", "Pagamento"],
+}: {
+  current: 1 | 2 | 3;
+  steps?: readonly [string, string, string];
+}) {
   return (
     <ol className="flex items-center gap-2 text-xs font-medium" aria-label="Etapas da compra">
       {steps.map((label, i) => {

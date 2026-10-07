@@ -4,13 +4,27 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
 
-const items = [
-  { href: "/admin", label: "Visão geral" },
+type NavItem = { href: string; label: string; exact?: boolean; match?: (pathname: string) => boolean };
+
+const items: NavItem[] = [
+  { href: "/admin", label: "Visão geral", exact: true },
   { href: "/admin/ingressos", label: "Ingressos" },
   { href: "/admin/pedidos", label: "Pedidos" },
   { href: "/admin/entradas", label: "Entradas" },
+  // Camisas: domínio separado dos ingressos. O teste de pagamento fica sob "Camisas".
+  {
+    href: "/admin/camisas",
+    label: "Camisas",
+    match: (p) => p === "/admin/camisas" || p.startsWith("/admin/camisas/teste"),
+  },
+  { href: "/admin/camisas/encomendas", label: "Encomendas" },
+  { href: "/admin/camisas/cupons", label: "Cupons" },
+  { href: "/admin/camisas/configuracoes", label: "Configurações" },
   { href: "/admin/staff", label: "Staff" },
 ];
+
+const isActive = (item: NavItem, pathname: string) =>
+  item.match ? item.match(pathname) : item.exact ? pathname === item.href : pathname.startsWith(item.href);
 
 export function AdminNav() {
   const pathname = usePathname();
@@ -31,8 +45,7 @@ export function AdminNav() {
       className="relative -mx-4 flex snap-x scroll-px-4 gap-1 overflow-x-auto px-4 [scrollbar-width:none] md:mx-0 md:flex-col md:overflow-visible md:px-0"
     >
       {items.map((item) => {
-        const active =
-          item.href === "/admin" ? pathname === "/admin" : pathname.startsWith(item.href);
+        const active = isActive(item, pathname);
         return (
           <Link
             key={item.href}

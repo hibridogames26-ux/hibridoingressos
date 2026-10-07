@@ -24,6 +24,14 @@ export function formatCpf(input: string) {
     .replace(/\.(\d{3})(\d)/, ".$1-$2");
 }
 
+/** "83999990000" → "(83) 99999-0000"; devolve o texto original se não tiver 10 ou 11 dígitos. */
+export function formatPhone(input: string) {
+  const d = onlyDigits(input);
+  if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+  if (d.length === 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+  return input;
+}
+
 export const isValidEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value.trim());
 
 /** Celular/telefone BR com DDD: 10 ou 11 dígitos. */

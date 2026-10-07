@@ -71,6 +71,8 @@ type Payer = { email: string; firstName: string; lastName: string; cpf: string }
 
 export function createPixPayment(params: {
   orderId: string;
+  /** Referência externa no MP; padrão = orderId (ingressos). Camisas usam "shirt:<uuid>". */
+  reference?: string;
   amountCents: number;
   description: string;
   payer: Payer;
@@ -84,7 +86,7 @@ export function createPixPayment(params: {
       transaction_amount: toReais(params.amountCents),
       description: params.description,
       payment_method_id: "pix",
-      external_reference: params.orderId,
+      external_reference: params.reference ?? params.orderId,
       notification_url: notificationUrl(),
       date_of_expiration: params.expiresAt.toISOString().replace("Z", "+00:00"),
       payer: {
@@ -99,6 +101,7 @@ export function createPixPayment(params: {
 
 export function createCardPayment(params: {
   orderId: string;
+  reference?: string;
   amountCents: number;
   description: string;
   token: string;
@@ -118,7 +121,7 @@ export function createCardPayment(params: {
       installments: params.installments,
       payment_method_id: params.paymentMethodId,
       issuer_id: params.issuerId ? Number(params.issuerId) : undefined,
-      external_reference: params.orderId,
+      external_reference: params.reference ?? params.orderId,
       notification_url: notificationUrl(),
       statement_descriptor: "HIBRIDOGAMES",
       payer: params.payer,
@@ -128,10 +131,10 @@ export function createCardPayment(params: {
 
 export const getPayment = (id: string | number) => mpFetch<MpPayment>(`/v1/payments/${encodeURIComponent(String(id))}`);
 
-/** Todos os pagamentos de um pedido (o comprador pode ter tentado mais de uma vez). */
-export async function searchPaymentsByOrder(orderId: string) {
+/** Todos os pagamentos de uma referência externa (o comprador pode ter tentado mais de uma vez). */
+export async function searchPaymentsByReference(reference: string) {
   const qs = new URLSearchParams({
-    external_reference: orderId,
+    external_reference: reference,
     sort: "date_created",
     criteria: "desc",
     limit: "20",
@@ -139,6 +142,9 @@ export async function searchPaymentsByOrder(orderId: string) {
   const data = await mpFetch<{ results: MpPayment[] }>(`/v1/payments/search?${qs}`);
   return data.results ?? [];
 }
+
+/** Todos os pagamentos de um pedido de ingresso. */
+export const searchPaymentsByOrder = (orderId: string) => searchPaymentsByReference(orderId);
 
 export function cancelPayment(id: string | number) {
   return mpFetch<MpPayment>(`/v1/payments/${encodeURIComponent(String(id))}`, {

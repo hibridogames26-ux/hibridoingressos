@@ -27,7 +27,7 @@ export default function Home() {
             className="inline-flex animate-rise items-center gap-1.5 rounded-md bg-success/16 px-2 py-0.5 text-xs font-medium text-success-ink"
           >
             <span aria-hidden="true" className="size-1.5 rounded-full bg-success" />
-            Canal oficial de ingressos
+            Canal oficial do evento
           </span>
           <div style={step(1)} className="flex animate-rise flex-col gap-2">
             <h1 className="font-display text-balance text-[2rem] font-bold leading-[1.17] tracking-[-1px] sm:text-5xl">

@@ -6,7 +6,13 @@ import { useCallback, useEffect, useState } from "react";
 import { FormMessage } from "@/components/AuthShell";
 import { btnOutline, btnPrimary, card } from "@/components/ui/styles";
 import { formatBRL } from "@/lib/format";
-import { checkOrder, payWithCard, startPix, type CardInput } from "./actions";
+import {
+  checkOrder as checkShirtOrder,
+  payWithCard as payShirtWithCard,
+  startPix as startShirtPix,
+} from "@/app/loja/pedido/[id]/actions";
+import { checkOrder as checkTicketOrder, payWithCard as payTicketWithCard, startPix as startTicketPix } from "./actions";
+import type { CardInput } from "./actions";
 import { formatRemaining, useNow } from "./useTicker";
 
 const CardBrick = dynamic(() => import("./CardBrick"), {
@@ -25,12 +31,18 @@ type Props = {
   buyerEmail: string;
   buyerCpf: string;
   publicKey: string;
+  /** Pedido de ingressos (padrão) ou encomenda de camisa: muda as ações e os textos. */
+  kind?: "ticket" | "shirt";
 };
 
 const POLL_MS = 5000;
 
 export function PaymentStep(props: Props) {
   const router = useRouter();
+  const shirt = props.kind === "shirt";
+  const checkOrder = shirt ? checkShirtOrder : checkTicketOrder;
+  const payWithCard = shirt ? payShirtWithCard : payTicketWithCard;
+  const startPix = shirt ? startShirtPix : startTicketPix;
   const now = useNow();
   const [method, setMethod] = useState<"pix" | "cartao">("pix");
   const [pix, setPix] = useState<{ qrCode: string; qrBase64: string; expiresAt: string } | null>(null);
@@ -43,7 +55,7 @@ export function PaymentStep(props: Props) {
   const refreshIfDone = useCallback(async () => {
     const status = await checkOrder(props.orderId, props.accessKey);
     if (status && status !== "pendente") router.refresh();
-  }, [props.orderId, props.accessKey, router]);
+  }, [checkOrder, props.orderId, props.accessKey, router]);
 
   useEffect(() => {
     if (!polling) return;
@@ -87,7 +99,7 @@ export function PaymentStep(props: Props) {
     }
     setMessage({ tone: "error", text: result.message ?? "Pagamento não aprovado." });
     setBrickKey((k) => k + 1); // novo formulário para tentar de novo
-  }, [props.orderId, props.accessKey, router]);
+  }, [payWithCard, props.orderId, props.accessKey, router]);
 
   const copy = async () => {
     if (!pix) return;
@@ -102,7 +114,7 @@ export function PaymentStep(props: Props) {
         <h2 className="text-[22px] font-semibold leading-tight">Pagamento em análise</h2>
         <p className="text-sm text-cool-gray">
           O Mercado Pago está analisando seu pagamento com cartão. Esta página atualiza sozinha e você também
-          receberá os ingressos por e-mail quando for aprovado.
+          receberá {shirt ? "a confirmação da encomenda" : "os ingressos"} por e-mail quando for aprovado.
         </p>
       </div>
     );
@@ -186,14 +198,21 @@ export function PaymentStep(props: Props) {
         </div>
       ) : (
         <div key="cartao" className="flex animate-panel flex-col gap-4" role="tabpanel">
-          <dl className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 rounded-xl bg-muted/8 p-4 text-sm">
-            <dt className="text-cool-gray">Ingressos</dt>
-            <dd className="text-right tabular-nums">{formatBRL(props.pixCents)}</dd>
-            <dt className="text-cool-gray">Taxa da operadora do cartão</dt>
-            <dd className="text-right tabular-nums">{formatBRL(props.surchargeCents)}</dd>
-            <dt className="font-semibold">Total no cartão</dt>
-            <dd className="text-right font-semibold tabular-nums">{formatBRL(props.cardCents)}</dd>
-          </dl>
+          {props.surchargeCents > 0 ? (
+            <dl className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 rounded-xl bg-muted/8 p-4 text-sm">
+              <dt className="text-cool-gray">{shirt ? "Camisa" : "Ingressos"}</dt>
+              <dd className="text-right tabular-nums">{formatBRL(props.pixCents)}</dd>
+              <dt className="text-cool-gray">Taxa da operadora do cartão</dt>
+              <dd className="text-right tabular-nums">{formatBRL(props.surchargeCents)}</dd>
+              <dt className="font-semibold">Total no cartão</dt>
+              <dd className="text-right font-semibold tabular-nums">{formatBRL(props.cardCents)}</dd>
+            </dl>
+          ) : (
+            <p className="rounded-xl bg-muted/8 p-4 text-sm">
+              <span className="text-cool-gray">Total no cartão </span>
+              <span className="font-semibold tabular-nums">{formatBRL(props.cardCents)}</span>
+            </p>
+          )}
           <p className="text-xs text-muted">
             Pagamento processado pelo Mercado Pago. Os dados do cartão não passam pelos nossos servidores.
           </p>

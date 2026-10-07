@@ -2,9 +2,11 @@ import { badgeBrand, badgeDanger, badgeNeutral, badgeSuccess } from "@/component
 import {
   orderStatusLabel,
   scanResultLabel,
+  shirtFulfillmentLabel,
   ticketStatusLabel,
   type OrderStatus,
   type ScanResult,
+  type ShirtFulfillment,
   type TicketStatus,
 } from "@/lib/labels";
 
@@ -28,6 +30,23 @@ const scanTone: Record<ScanResult, string> = {
   invalido: badgeNeutral,
   data_errada: badgeDanger,
 };
+
+const fulfillmentTone: Record<ShirtFulfillment, string> = {
+  aguardando_producao: badgeNeutral,
+  em_producao: badgeBrand,
+  pronto: badgeSuccess,
+  entregue: badgeSuccess,
+};
+
+/** Andamento da produção da camisa (independente do status do pagamento). */
+export function FulfillmentBadge({ status }: { status: ShirtFulfillment }) {
+  return (
+    <span className={fulfillmentTone[status]}>
+      {status === "entregue" && <span aria-hidden="true">✓&nbsp;</span>}
+      {shirtFulfillmentLabel[status]}
+    </span>
+  );
+}
 
 export function OrderStatusBadge({ status }: { status: OrderStatus }) {
   return <span className={orderTone[status]}>{orderStatusLabel[status]}</span>;

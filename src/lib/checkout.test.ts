@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   formatCpf,
+  formatPhone,
   isFullName,
   isValidCpf,
   isValidEmail,
@@ -52,5 +53,11 @@ describe("checkout", () => {
     expect(parseCart(`${A}:6,${B}:5`)).toBeNull(); // total > 10
     expect(parseCart(`${A}:1,${A}:1`)).toBeNull(); // repetido
     expect(parseCart("x:1")).toBeNull();
+  });
+
+  it("formata telefone com DDD", () => {
+    expect(formatPhone("83999990000")).toBe("(83) 99999-0000");
+    expect(formatPhone("8333334444")).toBe("(83) 3333-4444");
+    expect(formatPhone("123")).toBe("123");
   });
 });

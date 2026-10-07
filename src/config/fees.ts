@@ -39,7 +39,16 @@ export const FEE_PASSED_TO_BUYER: Record<PaymentMethod, boolean> = {
  * cobrado) cobre o subtotal: total = subtotal / (1 − taxa), arredondado para cima.
  */
 export function chargeCents(method: PaymentMethod, subtotalCents: number) {
-  if (!FEE_PASSED_TO_BUYER[method] || subtotalCents <= 0) return subtotalCents;
+  return chargeWithPassThrough(method, subtotalCents, FEE_PASSED_TO_BUYER);
+}
+
+/** Mesma conta de `chargeCents`, com a política de repasse informada (ex.: camisas). */
+export function chargeWithPassThrough(
+  method: PaymentMethod,
+  subtotalCents: number,
+  passedToBuyer: Record<PaymentMethod, boolean>,
+) {
+  if (!passedToBuyer[method] || subtotalCents <= 0) return subtotalCents;
   const bps = MP_FEE_BPS[method];
   let total = Math.ceil((subtotalCents * 10_000) / (10_000 - bps)) - 1;
   while (estimateNetCents(method, total) < subtotalCents) total++;
