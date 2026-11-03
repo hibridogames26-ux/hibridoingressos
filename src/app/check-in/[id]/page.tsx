@@ -9,6 +9,7 @@ import { getAthlete, getSession } from "@/lib/checkin/service";
 import { COMPETITION_LABEL } from "@/lib/checkin/terms";
 import { supabasePublishableKey } from "@/lib/env";
 import { formatDateTime } from "@/lib/format";
+import { prepareCertificateUpload, sendCheckin } from "./actions";
 import { CheckinWizard } from "./CheckinWizard";
 
 export const metadata: Metadata = { title: "Check-in do atleta", robots: { index: false } };
@@ -63,8 +64,12 @@ export default async function AthleteCheckinPage({ params, searchParams }: PageP
               prefillEmail: athlete.position === 1 ? athlete.registrationEmail : "",
               prefillPhone: athlete.position === 1 ? (athlete.registrationPhone ?? "") : "",
             }}
-            verifiedEmail={maskEmail(session.email)}
+            badge={`E-mail confirmado (${maskEmail(session.email)})`}
             storageKey={supabasePublishableKey()}
+            draftKey={`hg-checkin:${athlete.id}`}
+            successHref={`/check-in/${athlete.id}?ok=1`}
+            prepare={prepareCertificateUpload}
+            send={sendCheckin}
           />
         ) : null}
       </main>

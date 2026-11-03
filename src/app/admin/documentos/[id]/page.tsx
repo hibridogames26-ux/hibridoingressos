@@ -10,6 +10,7 @@ import { maskEmail } from "@/lib/checkin/form";
 import { parqQuestionsFrom } from "@/lib/checkin/pdf";
 import { displayName } from "@/lib/checkin/sheet";
 import { formatDateTime } from "@/lib/format";
+import { DeleteRegistration } from "./DeleteRegistration";
 import { EditDrawer } from "./EditDrawer";
 import { ResetCheckin } from "./ResetCheckin";
 
@@ -40,14 +41,26 @@ const RESET_NOTICE: Record<string, string> = {
   falhou: "Check-in reaberto e termo arquivado, mas o e-mail de aviso não foi enviado: avise o atleta por outro canal.",
 };
 
+const CREATE_NOTICE: Record<string, string> = {
+  avisado: "Cadastro criado. Avisamos no e-mail da inscrição que o check-in está liberado.",
+  "sem-aviso": "Cadastro criado. O atleta já pode fazer o check-in com o e-mail da inscrição.",
+  "sem-provedor": "Cadastro criado, mas nenhum provedor de e-mail está configurado: avise o atleta por outro canal.",
+  falhou: "Cadastro criado, mas o e-mail de aviso não foi enviado: avise o atleta por outro canal.",
+};
+
 export default async function DocumentoAtletaPage({ params, searchParams }: PageProps<"/admin/documentos/[id]">) {
   const { id } = await params;
-  const { reaberto } = await searchParams;
+  const { reaberto, criado, presencial } = await searchParams;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
 
   const [[doc], record] = await Promise.all([getAthleteDocuments([id]), getAthleteRecord(id)]);
   if (!doc || !record) notFound();
-  const notice = typeof reaberto === "string" ? RESET_NOTICE[reaberto] : undefined;
+  const notice =
+    (typeof reaberto === "string" ? RESET_NOTICE[reaberto] : undefined) ??
+    (typeof criado === "string" ? CREATE_NOTICE[criado] : undefined) ??
+    (presencial === "1" ? "Check-in presencial registrado. O termo assinado e o atestado estão abaixo." : undefined);
+  const canCheckin = !doc.checkin && record.status === "aprovado" && !record.adminCreatePending;
+  const canDelete = record.origin === "manual" && !doc.checkin && !record.archive.length && !record.adminCreatePending;
   const c = doc.checkin;
   const files = c ? await signedFileUrls(c) : null;
   const certIsImage = !!c?.certificate_type && /^image\/(jpeg|png|webp)$/.test(c.certificate_type);
@@ -86,6 +99,11 @@ export default async function DocumentoAtletaPage({ params, searchParams }: Page
                 }}
               />
             )}
+            {canCheckin && (
+              <Link href={`/admin/documentos/${doc.athleteId}/check-in`} className={btnPrimary}>
+                Registrar check-in presencial
+              </Link>
+            )}
             {c && (
               <a href={`/admin/documentos/${doc.athleteId}/pdf`} className={btnPrimary}>
                 Baixar PDF
@@ -109,6 +127,12 @@ export default async function DocumentoAtletaPage({ params, searchParams }: Page
         <section className={`${card} p-5 text-sm text-cool-gray`}>
           <span className={badgeNeutral}>Pendente</span>
           <p className="mt-3">Este atleta ainda não fez o check-in: não há termo assinado nem atestado.</p>
+          {canCheckin && (
+            <p className="mt-2">
+              Se ele está no local sem acesso ao e-mail, use <strong className="font-semibold text-ink">Registrar check-in presencial</strong>{" "}
+              e entregue o aparelho para ele preencher e assinar.
+            </p>
+          )}
         </section>
       ) : (
         <>
@@ -206,7 +230,9 @@ export default async function DocumentoAtletaPage({ params, searchParams }: Page
             </div>
             <Facts
               items={[
-                ["E-mail confirmado por código", c.verified_email],
+                c.recorded_by_name
+                  ? ["Registrado presencialmente por", `${c.recorded_by_name} (${c.verified_email})`]
+                  : ["E-mail confirmado por código", c.verified_email],
                 ["Assinado em", formatDateTime(c.signed_at)],
                 ["IP", c.ip ?? "—"],
                 ["Navegador", <span key="ua" className="font-normal text-cool-gray">{c.user_agent ?? "—"}</span>],
@@ -225,12 +251,19 @@ export default async function DocumentoAtletaPage({ params, searchParams }: Page
         </>
       )}
 
+      {canDelete && (
+        <DeleteRegistration
+          registrationId={record.registrationId}
+          names={[displayName(record.fullName), ...record.partners.map((p) => p.name)]}
+        />
+      )}
+
       <History record={record} />
     </>
   );
 }
 
-/** Cadastro vindo da planilha (e corrigido no painel). */
+/** Cadastro vindo da planilha ou feito no painel (e corrigido no painel). */
 function Registration({ record }: { record: AthleteRecord }) {
   const edited = new Set(record.editedFields);
   const value = (field: string, v: React.ReactNode) => (
@@ -245,7 +278,10 @@ function Registration({ record }: { record: AthleteRecord }) {
         <h2 id="cadastro" className="text-lg font-semibold">
           Cadastro
         </h2>
-        {record.status === "cancelado" && <span className={badgeDanger}>Inscrição cancelada</span>}
+        <span className="flex flex-wrap gap-1">
+          {record.origin === "manual" && <span className={badgeNeutral}>Cadastro manual</span>}
+          {record.status === "cancelado" && <span className={badgeDanger}>Inscrição cancelada</span>}
+        </span>
       </div>
       <Facts
         items={[

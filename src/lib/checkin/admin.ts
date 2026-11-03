@@ -101,6 +101,108 @@ export function parseEditForm(input: unknown): ParsedEdit {
 }
 
 // ---------------------------------------------------------------------------
+// Novo cadastro (Story 4.5)
+// ---------------------------------------------------------------------------
+export type RegistrationKind = "dupla" | "individual";
+export type RegistrationOrigin = "planilha" | "manual";
+
+export type CreateAthleteInput = { fullName: string; instagram: string; shirtSize: string };
+
+export type CreateFormInput = {
+  competition: string;
+  category: string;
+  kind: string;
+  teamName: string;
+  email: string;
+  phone: string;
+  box: string;
+  athletes: CreateAthleteInput[];
+};
+
+/** Chaves dos erros: campos da inscrição e `athletes.<índice>.<campo>`. */
+export type CreateErrorKey = Exclude<keyof CreateFormInput, "athletes"> | `athletes.${number}.${keyof CreateAthleteInput}`;
+export type CreateErrors = Partial<Record<CreateErrorKey, string>>;
+
+export type NewRegistration = {
+  competition: Competition;
+  category: string;
+  team_name: string;
+  kind: RegistrationKind;
+  email: string;
+  phone: string | null;
+  box: string | null;
+};
+export type NewAthlete = AthleteFields;
+
+export type ParsedCreate = { ok: true; registration: NewRegistration; athletes: NewAthlete[] } | { ok: false; errors: CreateErrors };
+
+export const athleteCount = (kind: RegistrationKind) => (kind === "dupla" ? 2 : 1);
+
+export function parseCreateForm(input: unknown): ParsedCreate {
+  const raw = (input && typeof input === "object" ? input : {}) as Record<string, unknown>;
+  const v = (k: Exclude<keyof CreateFormInput, "athletes">) => clean(raw[k]);
+  const errors: CreateErrors = {};
+
+  const competition = v("competition");
+  if (competition !== "hibrido-games" && competition !== "hibrido-race") errors.competition = "Escolha a competição.";
+
+  const category = v("category");
+  if (!category) errors.category = "Informe a categoria.";
+  else if (category.length > 80) errors.category = "Use até 80 caracteres.";
+
+  const kind = v("kind");
+  if (kind !== "dupla" && kind !== "individual") errors.kind = "Escolha o tipo da inscrição.";
+
+  const email = v("email").toLowerCase();
+  if (!email) errors.email = "Informe o e-mail da inscrição.";
+  else if (!EMAIL.test(email) || email.length > 160) errors.email = "E-mail inválido. Confira se tem @ e domínio, como nome@gmail.com.";
+
+  const phone = v("phone");
+  if (phone.length > 30) errors.phone = "Use até 30 caracteres.";
+
+  const box = v("box");
+  if (box.length > 120) errors.box = "Use até 120 caracteres.";
+
+  const list = Array.isArray(raw.athletes) ? raw.athletes : [];
+  const count = kind === "dupla" ? 2 : 1;
+  const athletes: NewAthlete[] = [];
+  for (let i = 0; i < count; i++) {
+    const a = (list[i] && typeof list[i] === "object" ? list[i] : {}) as Record<string, unknown>;
+    const fullName = clean(a.fullName);
+    const instagram = clean(a.instagram);
+    const shirtSize = clean(a.shirtSize).toUpperCase();
+    if (!fullName) errors[`athletes.${i}.fullName`] = count === 2 ? `Informe o nome do ${i + 1}º atleta.` : "Informe o nome do atleta.";
+    else if (fullName.length > 120) errors[`athletes.${i}.fullName`] = "Use até 120 caracteres.";
+    if (instagram.length > 60) errors[`athletes.${i}.instagram`] = "Use até 60 caracteres.";
+    if (shirtSize.length > 12) errors[`athletes.${i}.shirtSize`] = "Use até 12 caracteres.";
+    athletes.push({ full_name: fullName, instagram: instagram || null, shirt_size: shirtSize || null });
+  }
+  if (count === 2 && athletes[0].full_name && athletes[0].full_name.toLowerCase() === athletes[1].full_name.toLowerCase()) {
+    errors["athletes.1.fullName"] = "Os dois atletas estão com o mesmo nome.";
+  }
+
+  // No individual, a inscrição leva o nome do atleta quando a equipe fica em branco.
+  const teamName = v("teamName") || (kind === "individual" ? athletes[0]?.full_name ?? "" : "");
+  if (!teamName) errors.teamName = "Informe o nome da equipe.";
+  else if (teamName.length > 120) errors.teamName = "Use até 120 caracteres.";
+
+  if (Object.keys(errors).length) return { ok: false, errors };
+  return {
+    ok: true,
+    registration: {
+      competition: competition as Competition,
+      category,
+      team_name: teamName,
+      kind: kind as RegistrationKind,
+      email,
+      phone: phone || null,
+      box: box || null,
+    },
+    athletes,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Refazer check-in
 // ---------------------------------------------------------------------------
 export type ResetReason = "dados" | "atestado" | "assinatura" | "outro";
@@ -137,7 +239,7 @@ export type AthleteAuditRow = {
   id: number;
   at: string;
   actor_name: string | null;
-  kind: "edit" | "reset" | string;
+  kind: "edit" | "reset" | "create" | "delete" | "checkin" | string;
   detail: Record<string, unknown>;
 };
 
@@ -179,6 +281,11 @@ export function describeAthleteAudit(row: Pick<AthleteAuditRow, "kind" | "detail
       .map((f) => `${FIELD_LABEL[f] ?? f}: ${fieldValue(f, changes[f]?.from)} → ${fieldValue(f, changes[f]?.to)}`);
     return { title: "Cadastro editado", lines };
   }
+  const names = Array.isArray(d.athletes) ? (d.athletes as unknown[]).map(String) : [];
+  const who = names.length > 1 ? `Atletas: ${names.slice(0, -1).join(", ")} e ${names[names.length - 1]}.` : names.length ? `Atleta: ${names[0]}.` : null;
+  if (row.kind === "create") return { title: "Cadastro criado no painel", lines: who ? [who] : [] };
+  if (row.kind === "delete") return { title: "Cadastro excluído", lines: who ? [who] : [] };
+  if (row.kind === "checkin") return { title: "Check-in presencial registrado", lines: ["Termo assinado no aparelho da organização, sem código por e-mail."] };
   return { title: row.kind, lines: [] };
 }
 
@@ -190,6 +297,8 @@ const ATHLETE_FIELDS = new Set(["full_name", "instagram", "shirt_size"]);
 export function auditForAthlete(rows: (AthleteAuditRow & { athlete_id: string | null })[], athleteId: string): AthleteAuditRow[] {
   return rows.flatMap((row) => {
     if (row.athlete_id === athleteId) return [row];
+    // A criação vale para os dois integrantes da dupla.
+    if (row.kind === "create") return [row];
     if (row.kind !== "edit") return [];
     const changes = (row.detail?.changes ?? {}) as Record<string, unknown>;
     const shared = Object.fromEntries(Object.entries(changes).filter(([k]) => !ATHLETE_FIELDS.has(k)));

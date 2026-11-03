@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { auditForAthlete, describeAthleteAudit, parseEditForm, parseResetForm, resetReasonText, type EditFormInput } from "./admin";
+import {
+  auditForAthlete,
+  describeAthleteAudit,
+  parseCreateForm,
+  parseEditForm,
+  parseResetForm,
+  resetReasonText,
+  type CreateFormInput,
+  type EditFormInput,
+} from "./admin";
 
 const valid: EditFormInput = {
   fullName: "  Mariana   Alves ",
@@ -91,6 +100,15 @@ describe("describeAthleteAudit", () => {
     const d = describeAthleteAudit({ kind: "reset", detail: { reason: "atestado", note: "foto cortada" } });
     expect(d).toEqual({ title: "Check-in refeito", lines: ["Motivo: Atestado ilegível ou inválido (foto cortada)."] });
   });
+
+  it("criação, exclusão e check-in presencial", () => {
+    expect(describeAthleteAudit({ kind: "create", detail: { athletes: ["Ana", "Bia"] } })).toEqual({
+      title: "Cadastro criado no painel",
+      lines: ["Atletas: Ana e Bia."],
+    });
+    expect(describeAthleteAudit({ kind: "delete", detail: { athletes: ["Ana"] } })).toEqual({ title: "Cadastro excluído", lines: ["Atleta: Ana."] });
+    expect(describeAthleteAudit({ kind: "checkin", detail: {} }).title).toBe("Check-in presencial registrado");
+  });
 });
 
 describe("auditForAthlete", () => {
@@ -113,5 +131,74 @@ describe("auditForAthlete", () => {
     const result = auditForAthlete(rows, "a");
     expect(result.map((r) => r.id)).toEqual([1, 2]);
     expect(Object.keys((result[1].detail as { changes: object }).changes)).toEqual(["email"]);
+  });
+
+  it("a criação da dupla aparece para os dois integrantes", () => {
+    const rows = [row(1, "a", "create", { athletes: ["A", "B"] }), row(2, "a", "checkin", {})];
+    expect(auditForAthlete(rows, "b").map((r) => r.id)).toEqual([1]);
+  });
+});
+
+describe("parseCreateForm", () => {
+  const base: CreateFormInput = {
+    competition: "hibrido-race",
+    category: " Individual  Feminino ",
+    kind: "individual",
+    teamName: "",
+    email: " Ana@Gmail.com ",
+    phone: "(83) 99999-0000",
+    box: "",
+    athletes: [{ fullName: "  Ana   Souza ", instagram: "", shirtSize: "p" }],
+  };
+
+  it("individual: normaliza e usa o nome do atleta como inscrição", () => {
+    expect(parseCreateForm(base)).toEqual({
+      ok: true,
+      registration: {
+        competition: "hibrido-race",
+        category: "Individual Feminino",
+        team_name: "Ana Souza",
+        kind: "individual",
+        email: "ana@gmail.com",
+        phone: "(83) 99999-0000",
+        box: null,
+      },
+      athletes: [{ full_name: "Ana Souza", instagram: null, shirt_size: "P" }],
+    });
+  });
+
+  it("individual ignora um segundo atleta enviado", () => {
+    const r = parseCreateForm({ ...base, athletes: [...base.athletes, { fullName: "Outro", instagram: "", shirtSize: "" }] });
+    expect(r.ok && r.athletes).toHaveLength(1);
+  });
+
+  it("dupla exige os dois atletas, nomes diferentes e o nome da equipe", () => {
+    const r = parseCreateForm({ ...base, kind: "dupla", athletes: [{ fullName: "Ana Souza", instagram: "", shirtSize: "" }] });
+    expect(r).toEqual({
+      ok: false,
+      errors: { "athletes.1.fullName": "Informe o nome do 2º atleta.", teamName: "Informe o nome da equipe." },
+    });
+    const same = parseCreateForm({
+      ...base,
+      kind: "dupla",
+      teamName: "Equipe",
+      athletes: [
+        { fullName: "Ana Souza", instagram: "", shirtSize: "" },
+        { fullName: "ana souza", instagram: "", shirtSize: "" },
+      ],
+    });
+    expect(same.ok ? null : same.errors["athletes.1.fullName"]).toBe("Os dois atletas estão com o mesmo nome.");
+  });
+
+  it("recusa competição, tipo, categoria e e-mail inválidos", () => {
+    const r = parseCreateForm({ ...base, competition: "x", kind: "trio", category: "", email: "ana", teamName: "Ana" });
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(Object.keys(r.errors).sort()).toEqual(["category", "competition", "email", "kind"]);
+  });
+
+  it("entrada vazia ou estranha não quebra", () => {
+    expect(parseCreateForm(null).ok).toBe(false);
+    expect(parseCreateForm({ athletes: "x" }).ok).toBe(false);
   });
 });

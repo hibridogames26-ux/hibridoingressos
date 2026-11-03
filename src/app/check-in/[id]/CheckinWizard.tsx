@@ -33,8 +33,8 @@ import {
   competitionTitle,
   termsSections,
 } from "@/lib/checkin/terms";
+import type { SubmitInput, SubmitResult } from "@/lib/checkin/service";
 import { formatPhone } from "@/lib/checkout";
-import { prepareCertificateUpload, sendCheckin } from "./actions";
 
 type Athlete = {
   id: string;
@@ -58,7 +58,7 @@ type Saved = {
   guardianSignature: Signature;
 };
 
-const storageKeyFor = (id: string) => `hg-checkin:${id}`;
+type UploadTicket = { ok: true; path: string; signedUrl: string } | { ok: false; message: string; session?: boolean };
 
 function Field({
   label: text,
@@ -133,9 +133,9 @@ function Checkbox({
   );
 }
 
-function readSaved(athleteId: string): Saved | null {
+function readSaved(draftKey: string): Saved | null {
   try {
-    const raw = localStorage.getItem(storageKeyFor(athleteId));
+    const raw = localStorage.getItem(draftKey);
     const saved = raw ? (JSON.parse(raw) as Saved) : null;
     return saved?.v === 1 ? saved : null;
   } catch {
@@ -146,7 +146,18 @@ function readSaved(athleteId: string): Saved | null {
 
 const noop = () => () => {};
 
-type WizardProps = { athlete: Athlete; verifiedEmail: string; storageKey: string };
+type WizardProps = {
+  athlete: Athlete;
+  /** Selo ao lado do nome: e-mail confirmado ou check-in presencial. */
+  badge: string;
+  storageKey: string;
+  /** Chave do rascunho no aparelho (o admin usa uma chave própria). */
+  draftKey: string;
+  /** Para onde ir depois de confirmar. */
+  successHref: string;
+  prepare: (athleteId: string, file: { type: string; size: number }) => Promise<UploadTicket>;
+  send: (athleteId: string, input: SubmitInput) => Promise<SubmitResult>;
+};
 
 /**
  * Rascunho no aparelho: abrir a câmera para fotografar o atestado pode recarregar a página no Android.
@@ -154,11 +165,21 @@ type WizardProps = { athlete: Athlete; verifiedEmail: string; storageKey: string
  */
 export function CheckinWizard(props: WizardProps) {
   const hydrated = useSyncExternalStore(noop, () => true, () => false);
-  const saved = useMemo(() => (hydrated ? readSaved(props.athlete.id) : null), [hydrated, props.athlete.id]);
+  const saved = useMemo(() => (hydrated ? readSaved(props.draftKey) : null), [hydrated, props.draftKey]);
   return <WizardForm key={hydrated ? "client" : "server"} {...props} saved={saved} persist={hydrated} />;
 }
 
-function WizardForm({ athlete, verifiedEmail, storageKey, saved, persist }: WizardProps & { saved: Saved | null; persist: boolean }) {
+function WizardForm({
+  athlete,
+  badge,
+  storageKey,
+  draftKey,
+  successHref,
+  prepare,
+  send,
+  saved,
+  persist,
+}: WizardProps & { saved: Saved | null; persist: boolean }) {
   const router = useRouter();
   const [step, setStep] = useState<StepIndex>(saved?.step ?? 0);
   const [draft, setDraft] = useState<CheckinDraft>(() =>
@@ -182,11 +203,11 @@ function WizardForm({ athlete, verifiedEmail, storageKey, saved, persist }: Wiza
     if (!persist) return;
     try {
       const data: Saved = { v: 1, step, draft, certificate, signature, guardianSignature };
-      localStorage.setItem(storageKeyFor(athlete.id), JSON.stringify(data));
+      localStorage.setItem(draftKey, JSON.stringify(data));
     } catch {
       // Cota cheia ou armazenamento bloqueado: o formulário continua funcionando.
     }
-  }, [persist, athlete.id, step, draft, certificate, signature, guardianSignature]);
+  }, [persist, draftKey, step, draft, certificate, signature, guardianSignature]);
 
   const set = <K extends keyof CheckinDraft>(key: K, value: CheckinDraft[K]) => {
     setDraft((d) => ({ ...d, [key]: value }));
@@ -250,7 +271,7 @@ function WizardForm({ athlete, verifiedEmail, storageKey, saved, persist }: Wiza
   const submit = () =>
     startSubmit(async () => {
       setMessage(null);
-      const result = await sendCheckin(athlete.id, {
+      const result = await send(athlete.id, {
         draft,
         signature: signature?.dataUrl ?? null,
         guardianSignature: minor ? (guardianSignature?.dataUrl ?? null) : null,
@@ -258,9 +279,9 @@ function WizardForm({ athlete, verifiedEmail, storageKey, saved, persist }: Wiza
       });
       if (result.ok) {
         try {
-          localStorage.removeItem(storageKeyFor(athlete.id));
+          localStorage.removeItem(draftKey);
         } catch {}
-        router.replace(`/check-in/${athlete.id}?ok=1`);
+        router.replace(successHref);
         return;
       }
       if (result.reason === "done") return router.refresh();
@@ -301,7 +322,7 @@ function WizardForm({ athlete, verifiedEmail, storageKey, saved, persist }: Wiza
             <span>{[athlete.kind === "dupla" ? athlete.teamName : null, athlete.category].filter(Boolean).join(" · ")}</span>
             <span className="inline-flex items-center gap-1 rounded-md bg-success/16 px-1.5 py-0.5 text-xs font-medium text-success-ink">
               <Check className="size-3" />
-              E-mail confirmado ({verifiedEmail})
+              {badge}
             </span>
           </p>
         </div>
@@ -566,7 +587,7 @@ function WizardForm({ athlete, verifiedEmail, storageKey, saved, persist }: Wiza
                   setCertificate(c);
                   setErrors((e) => ({ ...e, certificate: undefined }));
                 }}
-                prepare={(file) => prepareCertificateUpload(athlete.id, file)}
+                prepare={(file) => prepare(athlete.id, file)}
                 apiKey={storageKey}
                 onSessionExpired={() => setSessionExpired(true)}
                 error={errors.certificate}

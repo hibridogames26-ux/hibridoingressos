@@ -126,9 +126,9 @@ async function main() {
     .in("competition", competitions)
     .eq("status", "aprovado");
   if (existingError) throw new Error(`Falha ao conferir inscrições: ${existingError.message}`);
-  // Situação corrigida no painel não muda por esta regra.
-  const gone = ((existing ?? []) as (Row & { id: string; team_name: string; admin_edited_fields?: string[] })[]).filter(
-    (r) => !keys.has(r.source_key) && !r.admin_edited_fields?.includes("status"),
+  // Situação corrigida no painel e cadastros feitos no painel (Story 4.5) não mudam por esta regra.
+  const gone = ((existing ?? []) as (Row & { id: string; team_name: string; admin_edited_fields?: string[]; origin?: string })[]).filter(
+    (r) => !keys.has(r.source_key) && !r.admin_edited_fields?.includes("status") && r.origin !== "manual",
   );
   if (gone.length) {
     const { error } = await supabase

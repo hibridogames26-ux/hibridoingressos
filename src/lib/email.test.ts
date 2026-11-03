@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
-const { buildCheckinCodeEmail, buildCheckinReopenedEmail, buildShirtEmail, buildTicketEmail, authLinkEmailHtml, authLinkEmailText, buildAuthLinkEmail, emailProviders, qrCid, shirtEmailHtml, shirtEmailText, ticketEmailHtml, ticketEmailText } = await import("./email");
+const { buildCheckinAvailableEmail, buildCheckinCodeEmail, buildCheckinReopenedEmail, buildShirtEmail, buildTicketEmail, authLinkEmailHtml, authLinkEmailText, buildAuthLinkEmail, emailProviders, qrCid, shirtEmailHtml, shirtEmailText, ticketEmailHtml, ticketEmailText } = await import("./email");
 
 describe("email", () => {
   it("usa o Resend como principal e o Gmail só como reserva", () => {
@@ -154,6 +154,20 @@ describe("email", () => {
       expect(msg.html).toContain("Atestado ilegível ou inválido");
       expect(msg.html).toContain('href="https://site/check-in"');
       expect(msg.text).toContain("Motivo: Atestado ilegível ou inválido");
+    });
+
+    it("check-in liberado cita os atletas e o link, escapando o HTML", () => {
+      const msg = buildCheckinAvailableEmail({
+        to: "cap@e.com",
+        athletes: ["Mariana Alves", "Bia <b>"],
+        competition: "Híbrido Race 2026",
+        checkinUrl: "https://site/check-in",
+      });
+      expect(msg.subject).toBe("Seu check-in está liberado — Híbrido Race 2026");
+      expect(msg.html).toContain("Bia &lt;b&gt;");
+      expect(msg.html).toContain('href="https://site/check-in"');
+      expect(msg.html).toContain("Cada integrante assina o próprio termo");
+      expect(msg.text).toContain("A organização cadastrou Mariana Alves e Bia <b> com este e-mail.");
     });
   });
 });

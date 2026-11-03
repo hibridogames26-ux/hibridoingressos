@@ -486,6 +486,65 @@ export function buildCheckinReopenedEmail(data: CheckinReopenedEmailData): Email
 export const sendCheckinReopenedEmail = (data: CheckinReopenedEmailData) => deliver(() => buildCheckinReopenedEmail(data));
 
 // ---------------------------------------------------------------------------
+// Cadastro feito pela organização: check-in liberado (Story 4.5)
+// ---------------------------------------------------------------------------
+export type CheckinAvailableEmailData = {
+  to: string;
+  athletes: string[];
+  competition: string;
+  checkinUrl: string;
+};
+
+export function checkinAvailableEmailHtml(data: Omit<CheckinAvailableEmailData, "to">) {
+  const names = data.athletes.map((n) => `<strong style="color:#101114">${escapeHtml(n)}</strong>`);
+  const who = names.length <= 1 ? (names[0] ?? "") : `${names.slice(0, -1).join(", ")} e ${names[names.length - 1]}`;
+  return emailShell(
+    "Seu check-in está liberado",
+    `A organização cadastrou ${listNames(data.athletes)}. Faça o check-in pelo link.`,
+    `Check-in do atleta · ${data.competition}`,
+    `    <tr>
+      <td style="padding:12px 32px 4px;font-family:${FONT};color:#484b5e;font-size:16px;line-height:1.5">
+        Olá! A organização cadastrou ${who} com este e-mail. Para confirmar a presença, faça o check-in: código no e-mail, PAR-Q, termo de responsabilidade e atestado médico.
+      </td>
+    </tr>
+    <tr>
+      <td align="center" style="padding:24px 32px">
+        <a href="${escapeHtml(data.checkinUrl)}" style="display:inline-block;background:${ACCENT};color:#ffffff;font-family:${FONT};font-size:15px;font-weight:600;text-decoration:none;border-radius:12px;padding:14px 28px">Fazer o check-in</a>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:0 32px 28px;font-family:${FONT};font-size:14px;line-height:1.6;color:#484b5e">
+        Use este mesmo e-mail para receber o código.${data.athletes.length > 1 ? " Cada integrante assina o próprio termo e anexa o próprio atestado." : ""} Dúvidas? Fale com a organização do evento.
+      </td>
+    </tr>`,
+  );
+}
+
+export function checkinAvailableEmailText(data: Omit<CheckinAvailableEmailData, "to">) {
+  return [
+    `Check-in do atleta · ${data.competition}`,
+    "",
+    `A organização cadastrou ${listNames(data.athletes)} com este e-mail. Para confirmar a presença, faça o check-in: código no e-mail, PAR-Q, termo de responsabilidade e atestado médico.`,
+    "",
+    `Fazer o check-in: ${data.checkinUrl}`,
+    "Use este mesmo e-mail para receber o código. Dúvidas? Fale com a organização do evento.",
+  ].join("\n");
+}
+
+export function buildCheckinAvailableEmail(data: CheckinAvailableEmailData): EmailMessage {
+  return {
+    to: data.to,
+    subject: `Seu check-in está liberado — ${data.competition}`,
+    html: checkinAvailableEmailHtml(data),
+    text: checkinAvailableEmailText(data),
+    inline: [],
+  };
+}
+
+/** Avisa que o check-in está liberado; retorna false se nenhum provedor estiver configurado. */
+export const sendCheckinAvailableEmail = (data: CheckinAvailableEmailData) => deliver(() => buildCheckinAvailableEmail(data));
+
+// ---------------------------------------------------------------------------
 // Acesso da organização: convite e redefinição de senha
 // ---------------------------------------------------------------------------
 export type AuthLinkKind = "invite" | "recovery";

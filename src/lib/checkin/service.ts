@@ -276,7 +276,12 @@ export async function submitCheckin(
   athlete: CheckinAthlete,
   sessionEmail: string,
   input: SubmitInput,
-  meta: { ip: string | null; userAgent: string | null },
+  meta: {
+    ip: string | null;
+    userAgent: string | null;
+    /** Check-in presencial: admin que registrou no próprio aparelho (Story 4.5). */
+    recordedBy?: { id: string; name: string | null };
+  },
 ): Promise<SubmitResult> {
   const parsed = parseCheckin(input.draft);
   if (!parsed.ok) return { ok: false, message: "Confira os campos destacados.", errors: parsed.errors };
@@ -339,12 +344,25 @@ export async function submitCheckin(
     verified_email: sessionEmail,
     ip: meta.ip,
     user_agent: meta.userAgent?.slice(0, 300) ?? null,
+    ...(meta.recordedBy ? { recorded_by: meta.recordedBy.id, recorded_by_name: meta.recordedBy.name } : {}),
   });
 
   if (error) {
     await storage.remove([signaturePath, ...(guardianPath ? [guardianPath] : [])]);
     if (error.code === "23505") return { ok: false, message: "O check-in deste atleta já foi confirmado.", reason: "done" };
     throw new Error(`Failed to save check-in: ${error.message}`);
+  }
+
+  if (meta.recordedBy) {
+    const { error: auditError } = await supabase.from("athlete_audit_log").insert({
+      actor_id: meta.recordedBy.id,
+      actor_name: meta.recordedBy.name,
+      athlete_id: athlete.id,
+      kind: "checkin",
+      detail: {},
+    });
+    // O termo já está salvo: falha no histórico só vai para o log.
+    if (auditError) console.error("Error writing presencial check-in audit:", auditError);
   }
 
   // A sessão do e-mail continua: o outro integrante da dupla pode seguir no mesmo aparelho.

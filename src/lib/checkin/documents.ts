@@ -1,7 +1,7 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
-import { auditForAthlete, type AthleteAuditRow, type RegistrationStatus, type ResetReason } from "./admin";
+import { auditForAthlete, type AthleteAuditRow, type RegistrationOrigin, type RegistrationStatus, type ResetReason } from "./admin";
 import type { CheckinDocument, CheckinRecord } from "./pdf";
 import { CHECKIN_BUCKET } from "./service";
 import { displayName, fold, type Competition } from "./sheet";
@@ -50,28 +50,55 @@ export type DocumentRow = {
   checkin: { id: string; signedAt: string; parqAnyYes: boolean; isMinor: boolean; certificateType: string | null } | null;
   /** Check-in refeito pela organização: há termo arquivado (Story 4.4). */
   reopened: boolean;
+  /** Cadastro feito no painel (Story 4.5). */
+  origin: RegistrationOrigin;
 };
 
 type Embedded<T> = T | T[] | null;
 const one = <T,>(value: Embedded<T>) => (Array.isArray(value) ? (value[0] ?? null) : value);
 
 const isMissingTable = (error: { code?: string } | null) => error?.code === "42P01" || error?.code === "PGRST205";
+/** Coluna ausente: migration mais nova ainda não aplicada. */
+const isMissingColumn = (error: { code?: string } | null) => error?.code === "42703" || error?.code === "PGRST204";
 
 const LIST_ATHLETES = "athletes(id, full_name, position, athlete_checkins(id, signed_at, parq_any_yes, is_minor, certificate_type)";
 
+type ListRow = {
+  competition: string;
+  category: string;
+  team_name: string;
+  kind: string;
+  box: string | null;
+  origin?: string;
+  athletes:
+    | {
+        id: string;
+        full_name: string;
+        position: number;
+        athlete_checkins: Embedded<{ id: string; signed_at: string; parq_any_yes: boolean; is_minor: boolean; certificate_type: string | null }>;
+        athlete_checkins_archive?: unknown[];
+      }[]
+    | null;
+};
+
 export async function listDocuments(): Promise<DocumentRow[] | "unavailable"> {
   const supabase = await createClient();
-  const query = (withArchive: boolean) =>
-    supabase
+  // full: colunas e tabelas das Stories 4.4 e 4.5 (termo arquivado e origem do cadastro).
+  // As colunas variam com as migrations aplicadas: o resultado é tipado à mão.
+  const query = async (full: boolean) => {
+    const columns: string = `id, competition, category, team_name, kind, box${full ? ", origin" : ""}, ${LIST_ATHLETES}${full ? ", athlete_checkins_archive(id)" : ""})`;
+    const { data, error } = await supabase
       .from("athlete_registrations")
-      .select(`id, competition, category, team_name, kind, box, ${LIST_ATHLETES}${withArchive ? ", athlete_checkins_archive(id)" : ""})`)
+      .select(columns)
       .eq("status", "aprovado")
       .order("competition")
       .order("category")
       .order("team_name");
+    return { data: data as unknown as ListRow[] | null, error };
+  };
   let { data, error } = await query(true);
-  // Banco sem a migration da Story 4.4: lista sem o selo de check-in reaberto.
-  if (isMissingTable(error) || error?.code === "PGRST200") ({ data, error } = await query(false));
+  // Banco sem as migrations das Stories 4.4/4.5: lista sem os selos de check-in reaberto e cadastro manual.
+  if (isMissingTable(error) || isMissingColumn(error) || error?.code === "PGRST200") ({ data, error } = await query(false));
   if (isMissingTable(error)) return "unavailable";
   if (error) throw new Error(`Falha ao carregar documentos: ${error.message}`);
 
@@ -79,15 +106,7 @@ export async function listDocuments(): Promise<DocumentRow[] | "unavailable"> {
     [...(r.athletes ?? [])]
       .sort((a, b) => a.position - b.position)
       .map((a) => {
-        const c = one(
-          a.athlete_checkins as Embedded<{
-            id: string;
-            signed_at: string;
-            parq_any_yes: boolean;
-            is_minor: boolean;
-            certificate_type: string | null;
-          }>,
-        );
+        const c = one(a.athlete_checkins);
         return {
           athleteId: a.id,
           name: displayName(a.full_name),
@@ -105,7 +124,8 @@ export async function listDocuments(): Promise<DocumentRow[] | "unavailable"> {
                 certificateType: c.certificate_type,
               }
             : null,
-          reopened: ((a as { athlete_checkins_archive?: unknown[] }).athlete_checkins_archive ?? []).length > 0,
+          reopened: (a.athlete_checkins_archive ?? []).length > 0,
+          origin: (r.origin === "manual" ? "manual" : "planilha") as RegistrationOrigin,
         };
       }),
   );
@@ -125,8 +145,9 @@ export function filterDocuments(rows: DocumentRow[], filters: DocumentFilters) {
 // ---------------------------------------------------------------------------
 // Documento completo de um atleta
 // ---------------------------------------------------------------------------
-const CHECKIN_COLUMNS =
+const CHECKIN_COLUMNS_BASE =
   "id, terms_version, terms_text, full_name, birth_date, phone, email, emergency_name, emergency_phone, competition, category, parq, parq_any_yes, image_consent, is_minor, guardian_name, guardian_relation, guardian_phone, place, signature_path, guardian_signature_path, certificate_path, certificate_name, certificate_type, certificate_size, verified_email, ip, user_agent, signed_at";
+const CHECKIN_COLUMNS = `${CHECKIN_COLUMNS_BASE}, recorded_by_name`;
 
 export type CheckinRow = CheckinRecord & {
   signature_path: string;
@@ -134,24 +155,30 @@ export type CheckinRow = CheckinRecord & {
   certificate_path: string;
 };
 
-export type AthleteDocument = Omit<DocumentRow, "checkin" | "reopened"> & { checkin: CheckinRow | null };
+export type AthleteDocument = Omit<DocumentRow, "checkin" | "reopened" | "origin"> & { checkin: CheckinRow | null };
 
 export async function getAthleteDocuments(athleteIds: string[]): Promise<AthleteDocument[]> {
   if (!athleteIds.length) return [];
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("athletes")
-    .select(
-      `id, full_name, athlete_registrations!inner(competition, category, team_name, kind, box), athlete_checkins(${CHECKIN_COLUMNS})`,
-    )
-    .in("id", athleteIds);
+  type Row = {
+    id: string;
+    full_name: string;
+    athlete_registrations: Embedded<{ competition: string; category: string; team_name: string; kind: string; box: string | null }>;
+    athlete_checkins: Embedded<CheckinRow>;
+  };
+  const select = async (checkinColumns: string) => {
+    const columns: string = `id, full_name, athlete_registrations!inner(competition, category, team_name, kind, box), athlete_checkins(${checkinColumns})`;
+    const { data, error } = await supabase.from("athletes").select(columns).in("id", athleteIds);
+    return { data: data as unknown as Row[] | null, error };
+  };
+  let { data, error } = await select(CHECKIN_COLUMNS);
+  // Banco sem a migration da Story 4.5: sem o registro do check-in presencial.
+  if (isMissingColumn(error)) ({ data, error } = await select(CHECKIN_COLUMNS_BASE));
   if (error) throw new Error(`Falha ao carregar o check-in: ${error.message}`);
 
   const byId = new Map(
     (data ?? []).map((a) => {
-      const reg = one(
-        a.athlete_registrations as Embedded<{ competition: string; category: string; team_name: string; kind: string; box: string | null }>,
-      )!;
+      const reg = one(a.athlete_registrations)!;
       const doc: AthleteDocument = {
         athleteId: a.id,
         name: displayName(a.full_name),
@@ -160,7 +187,7 @@ export async function getAthleteDocuments(athleteIds: string[]): Promise<Athlete
         box: reg.box?.trim() || null,
         competition: reg.competition as Competition,
         category: reg.category,
-        checkin: one(a.athlete_checkins as Embedded<CheckinRow>),
+        checkin: one(a.athlete_checkins),
       };
       return [a.id, doc];
     }),
@@ -195,6 +222,7 @@ export type AthleteRecord = {
   category: string;
   status: RegistrationStatus;
   kind: "dupla" | "individual";
+  origin: RegistrationOrigin;
   /** Campos corrigidos no painel (a importação não os sobrescreve). */
   editedFields: string[];
   partners: { id: string; name: string }[];
@@ -204,23 +232,31 @@ export type AthleteRecord = {
   archive: ArchivedCheckin[];
   /** Migration da Story 4.4 ainda não aplicada: edição e reset indisponíveis. */
   migrationPending: boolean;
+  /** Migration da Story 4.5 ainda não aplicada: exclusão e check-in presencial indisponíveis. */
+  adminCreatePending: boolean;
 };
 
 export async function getAthleteRecord(athleteId: string): Promise<AthleteRecord | null> {
   const supabase = await createClient();
-  const select = (withEdited: boolean) =>
+  // level 2: colunas das Stories 4.4 e 4.5; 1: só 4.4; 0: nenhuma.
+  const select = (level: 0 | 1 | 2) =>
     supabase
       .from("athletes")
       .select(
-        `id, full_name, instagram, shirt_size${withEdited ? ", admin_edited_fields" : ""}, athlete_registrations!inner(id, competition, category, team_name, kind, email, phone, box, status${withEdited ? ", admin_edited_fields" : ""}, athletes(id, full_name, position))`,
+        `id, full_name, instagram, shirt_size${level ? ", admin_edited_fields" : ""}, athlete_registrations!inner(id, competition, category, team_name, kind, email, phone, box, status${level ? ", admin_edited_fields" : ""}${level === 2 ? ", origin" : ""}, athletes(id, full_name, position))`,
       )
       .eq("id", athleteId)
       .maybeSingle();
   let migrationPending = false;
-  let { data, error } = await select(true);
-  if (error?.code === "42703" || error?.code === "PGRST204") {
+  let adminCreatePending = false;
+  let { data, error } = await select(2);
+  if (isMissingColumn(error)) {
+    adminCreatePending = true;
+    ({ data, error } = await select(1));
+  }
+  if (isMissingColumn(error)) {
     migrationPending = true;
-    ({ data, error } = await select(false));
+    ({ data, error } = await select(0));
   }
   if (error) throw new Error(`Falha ao carregar o cadastro: ${error.message}`);
   if (!data) return null;
@@ -236,6 +272,7 @@ export async function getAthleteRecord(athleteId: string): Promise<AthleteRecord
     box: string | null;
     status: string;
     admin_edited_fields?: string[];
+    origin?: string;
     athletes: { id: string; full_name: string; position: number }[];
   };
   const a = data as unknown as {
@@ -291,6 +328,7 @@ export async function getAthleteRecord(athleteId: string): Promise<AthleteRecord
     category: reg.category,
     status: reg.status as RegistrationStatus,
     kind: reg.kind as AthleteRecord["kind"],
+    origin: reg.origin === "manual" ? "manual" : "planilha",
     editedFields: [...(a.admin_edited_fields ?? []), ...(reg.admin_edited_fields ?? [])],
     partners: [...(reg.athletes ?? [])]
       .filter((p) => p.id !== a.id)
@@ -309,6 +347,7 @@ export async function getAthleteRecord(athleteId: string): Promise<AthleteRecord
           archivedByName: r.archived_by_name,
         })),
     migrationPending,
+    adminCreatePending: adminCreatePending || migrationPending,
   };
 }
 

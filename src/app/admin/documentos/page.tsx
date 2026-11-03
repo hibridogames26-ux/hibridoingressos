@@ -10,11 +10,15 @@ import {
   parseDocumentFilters,
 } from "@/lib/checkin/documents";
 import { formatDateTime, percent } from "@/lib/format";
+import { FormMessage } from "@/components/AuthShell";
+import { CreateDrawer } from "./CreateDrawer";
 
 export const metadata: Metadata = { title: "Documentos — Dashboard" };
 
 export default async function DocumentosPage({ searchParams }: PageProps<"/admin/documentos">) {
-  const filters = parseDocumentFilters(await searchParams);
+  const params = await searchParams;
+  const filters = parseDocumentFilters(params);
+  const deleted = typeof params.excluido === "string" ? params.excluido.slice(0, 200) : null;
   const all = await listDocuments();
 
   if (all === "unavailable") {
@@ -34,24 +38,34 @@ export default async function DocumentosPage({ searchParams }: PageProps<"/admin
   const parqYes = all.filter((r) => r.checkin?.parqAnyYes).length;
   const minors = all.filter((r) => r.checkin?.isMinor).length;
 
+  // Categorias já usadas, para sugerir no novo cadastro.
+  const categories: Record<string, string[]> = { "hibrido-games": [], "hibrido-race": [] };
+  for (const r of all) if (categories[r.competition] && !categories[r.competition].includes(r.category)) categories[r.competition].push(r.category);
+  for (const list of Object.values(categories)) list.sort((x, y) => x.localeCompare(y, "pt-BR"));
+
   return (
     <>
       <PageHeader
         title="Documentos"
         description="Termos de responsabilidade, PAR-Q, assinaturas e atestados do check-in dos atletas."
         actions={
-          confirmedHere > 0 && (
-            <>
-              <a href={`/admin/documentos/exportar${filtersQuery(filters)}`} className={btnOutline}>
-                PDF dos termos ({confirmedHere})
-              </a>
-              <a href={`/admin/documentos/exportar${filtersQuery(filters, { atestados: "1" })}`} className={btnOutline}>
-                PDF com atestados
-              </a>
-            </>
-          )
+          <>
+            {confirmedHere > 0 && (
+              <>
+                <a href={`/admin/documentos/exportar${filtersQuery(filters)}`} className={btnOutline}>
+                  PDF dos termos ({confirmedHere})
+                </a>
+                <a href={`/admin/documentos/exportar${filtersQuery(filters, { atestados: "1" })}`} className={btnOutline}>
+                  PDF com atestados
+                </a>
+              </>
+            )}
+            <CreateDrawer categories={categories} />
+          </>
         }
       />
+
+      {deleted && <FormMessage tone="success">Cadastro excluído: {deleted}.</FormMessage>}
 
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="Check-ins confirmados" value={`${confirmedAll} de ${all.length}`} hint={`${percent(confirmedAll, all.length)} dos atletas`} />
@@ -119,6 +133,7 @@ export default async function DocumentosPage({ searchParams }: PageProps<"/admin
                       <div className="flex flex-wrap gap-1">
                         <span className={r.checkin ? badgeSuccess : badgeNeutral}>{r.checkin ? "Confirmado" : "Pendente"}</span>
                         {!r.checkin && r.reopened && <span className={badgeBrand}>Check-in reaberto</span>}
+                        {r.origin === "manual" && <span className={badgeNeutral}>Cadastro manual</span>}
                       </div>
                     </td>
                     <td data-label="Alertas" className={tdCls}>

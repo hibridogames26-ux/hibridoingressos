@@ -30,6 +30,8 @@ export type CheckinRecord = {
   certificate_type: string | null;
   certificate_size: number | null;
   verified_email: string;
+  /** Check-in presencial registrado pelo admin (Story 4.5). */
+  recorded_by_name?: string | null;
   ip: string | null;
   user_agent: string | null;
   signed_at: string;
@@ -307,7 +309,9 @@ async function writeTerm(w: Writer, d: CheckinDocument) {
   w.ensure(130); // mantém o registro inteiro na mesma página
   w.heading("Registro da assinatura eletrônica");
   w.facts([
-    ["E-mail confirmado por código", c.verified_email],
+    c.recorded_by_name
+      ? ["Registrado presencialmente por", `${c.recorded_by_name} (${c.verified_email})`]
+      : ["E-mail confirmado por código", c.verified_email],
     ["Data e hora (Brasília)", formatDateTime(c.signed_at)],
     ["Endereço IP", c.ip ?? "—"],
     ["ID do check-in", c.id],

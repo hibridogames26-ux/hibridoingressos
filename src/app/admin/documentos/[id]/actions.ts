@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getCurrentProfile } from "@/lib/auth";
 import { parseEditForm, parseResetForm, resetReasonText, type EditErrors, type EditFormInput } from "@/lib/checkin/admin";
 import { isUuid } from "@/lib/checkin/code";
+import { CHECKIN_BUCKET } from "@/lib/checkin/service";
 import { displayName, type Competition } from "@/lib/checkin/sheet";
 import { competitionTitle } from "@/lib/checkin/terms";
 import { sendCheckinReopenedEmail } from "@/lib/email";
@@ -94,6 +95,53 @@ export async function resetCheckinAction(athleteId: string, input: { reason: str
   } catch (error) {
     console.error("Error in resetCheckinAction:", error);
     return { ok: false, message: "Não foi possível refazer o check-in. Verifique a conexão e tente de novo." };
+  }
+}
+
+export type DeleteResult = { ok: true; names: string[] } | { ok: false; message: string };
+
+/** Exclui um cadastro feito no painel, sem check-in nem termo arquivado (Story 4.5). */
+export async function deleteRegistrationAction(registrationId: string): Promise<DeleteResult> {
+  try {
+    if (!(await isAdmin())) return { ok: false, message: "Sem permissão para esta ação. Entre com a conta de administrador." };
+    if (typeof registrationId !== "string" || !isUuid(registrationId)) return { ok: false, message: "Cadastro não encontrado." };
+
+    const supabase = await createClient();
+    const { data: athletes } = await supabase.from("athletes").select("id").eq("registration_id", registrationId);
+    const { data, error } = await supabase.rpc("admin_delete_registration", { p_registration: registrationId });
+    if (error) return { ok: false, message: explain(error) };
+
+    const result = data as { status?: string; athletes?: string[] } | null;
+    if (result?.status === "not_found") return { ok: false, message: "Cadastro não encontrado. Atualize a página." };
+    if (result?.status === "not_manual") {
+      return { ok: false, message: "Cadastros da planilha não são excluídos: a importação os traria de volta. Mude a situação para Cancelada." };
+    }
+    if (result?.status === "has_documents") {
+      return { ok: false, message: "Este cadastro já tem check-in ou termo arquivado e não pode ser excluído. Mude a situação para Cancelada." };
+    }
+    if (result?.status !== "ok") return { ok: false, message: "Não foi possível excluir. Tente de novo." };
+
+    await removeDraftFiles((athletes ?? []).map((a) => a.id as string));
+    revalidatePath("/admin/documentos");
+    revalidatePath("/check-in");
+    return { ok: true, names: (result.athletes ?? []).map(displayName) };
+  } catch (error) {
+    console.error("Error in deleteRegistrationAction:", error);
+    return { ok: false, message: "Não foi possível excluir. Verifique a conexão e tente de novo." };
+  }
+}
+
+/** Atestados enviados e não usados (check-in não concluído). Nunca impede a exclusão. */
+async function removeDraftFiles(athleteIds: string[]) {
+  try {
+    const storage = createAdminClient().storage.from(CHECKIN_BUCKET);
+    for (const id of athleteIds) {
+      const { data } = await storage.list(id, { limit: 100 });
+      const paths = (data ?? []).map((f) => `${id}/${f.name}`);
+      if (paths.length) await storage.remove(paths);
+    }
+  } catch (error) {
+    console.error("Error removing draft check-in files:", error);
   }
 }
 
