@@ -140,13 +140,17 @@ export async function buildTicketEmail(data: TicketEmailData): Promise<EmailMess
   };
 }
 
-export type EmailProvider = "gmail" | "resend" | null;
+export type EmailProvider = "resend" | "gmail";
 
-/** Gmail (senha de app) tem prioridade; Resend fica como alternativa. */
-export function emailProvider(env: Record<string, string | undefined> = process.env): EmailProvider {
-  if (env.GMAIL_USER && env.GMAIL_APP_PASSWORD) return "gmail";
-  if (env.RESEND_API_KEY || env.RESEND_API) return "resend";
-  return null;
+/**
+ * Provedores na ordem de uso: Resend é o principal; Gmail (senha de app) só entra
+ * como reserva se estiver configurado e o Resend falhar ou não estiver configurado.
+ */
+export function emailProviders(env: Record<string, string | undefined> = process.env): EmailProvider[] {
+  const providers: EmailProvider[] = [];
+  if (env.RESEND_API_KEY || env.RESEND_API) providers.push("resend");
+  if (env.GMAIL_USER && env.GMAIL_APP_PASSWORD) providers.push("gmail");
+  return providers;
 }
 
 async function sendViaGmail(message: EmailMessage) {
@@ -193,21 +197,30 @@ async function sendViaResend(message: EmailMessage) {
   if (error) throw new Error(error.message);
 }
 
-/** Monta e entrega a mensagem pelo provedor configurado; retorna false se não houver nenhum. */
+/**
+ * Monta e entrega a mensagem pelo Resend (com o Gmail como reserva, se configurado).
+ * Retorna false se nenhum provedor estiver configurado; lança erro se todos falharem.
+ */
 async function deliver(build: () => EmailMessage | Promise<EmailMessage>) {
-  const provider = emailProvider();
-  if (!provider) {
-    console.warn("Nenhum provedor de e-mail configurado (GMAIL_USER/GMAIL_APP_PASSWORD): e-mail não enviado.");
+  const providers = emailProviders();
+  if (providers.length === 0) {
+    console.warn("Nenhum provedor de e-mail configurado (RESEND_API_KEY): e-mail não enviado.");
     return false;
   }
   const message = await build();
-  try {
-    if (provider === "gmail") await sendViaGmail(message);
-    else await sendViaResend(message);
-  } catch (error) {
-    throw new Error(`Falha ao enviar e-mail via ${provider}: ${error instanceof Error ? error.message : error}`);
+  const failures: string[] = [];
+  for (const provider of providers) {
+    try {
+      if (provider === "resend") await sendViaResend(message);
+      else await sendViaGmail(message);
+      return true;
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      console.error(`Falha ao enviar e-mail via ${provider}: ${reason}`);
+      failures.push(`${provider}: ${reason}`);
+    }
   }
-  return true;
+  throw new Error(`Falha ao enviar e-mail (${failures.join("; ")})`);
 }
 
 /** Envia o e-mail de ingressos; retorna false se nenhum provedor estiver configurado. */
@@ -313,3 +326,253 @@ export function buildShirtEmail(data: ShirtEmailData): EmailMessage {
 
 /** Envia a confirmação da encomenda; retorna false se nenhum provedor estiver configurado. */
 export const sendShirtOrderEmail = (data: ShirtEmailData) => deliver(() => buildShirtEmail(data));
+
+// ---------------------------------------------------------------------------
+// Check-in do atleta: código de confirmação (enviado ao e-mail da inscrição)
+// ---------------------------------------------------------------------------
+export type CheckinCodeEmailData = {
+  to: string;
+  /** Atletas das inscrições deste e-mail, ex.: ["Mariana Alves", "Rafael Costa"]. */
+  athletes: string[];
+  code: string;
+  checkinUrl: string;
+};
+
+/** "A", "A e B", "A, B e C". */
+const listNames = (names: string[]) =>
+  names.length <= 1 ? (names[0] ?? "") : `${names.slice(0, -1).join(", ")} e ${names[names.length - 1]}`;
+
+const emailShell = (title: string, preheader: string, eyebrow: string, body: string) => `<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)}</title></head>
+<body style="margin:0;padding:0;background:#f4f4f7">
+<div style="display:none;max-height:0;overflow:hidden">${escapeHtml(preheader)}</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f7"><tr><td align="center" style="padding:24px 12px">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border:1px solid #dedee5;border-radius:16px;border-collapse:separate">
+    <tr>
+      <td style="padding:28px 32px 8px;font-family:${FONT};color:#101114">
+        <div style="font-size:14px;color:#686b82">${escapeHtml(eyebrow)}</div>
+        <div style="font-size:22px;font-weight:700;margin-top:6px">${escapeHtml(title)}</div>
+      </td>
+    </tr>
+${body}
+  </table>
+  <div style="font-family:${FONT};font-size:12px;color:#686b82;padding:16px 20px 0;text-align:center">${escapeHtml(event.name)} ${event.year} · ${escapeHtml(event.tagline)} · ${escapeHtml(event.endorsement)}</div>
+</td></tr></table>
+</body>
+</html>`;
+
+export function checkinCodeEmailHtml(data: Omit<CheckinCodeEmailData, "to">) {
+  const digits = data.code.split("").join("&#8202;");
+  const names = data.athletes.map((n) => `<strong style="color:#101114">${escapeHtml(n)}</strong>`);
+  const who = names.length <= 1 ? (names[0] ?? "") : `${names.slice(0, -1).join(", ")} e ${names[names.length - 1]}`;
+  return emailShell(
+    "Seu código de confirmação",
+    `Seu código do check-in: ${data.code}. Vale por 10 minutos.`,
+    `Check-in do atleta · ${event.name} ${event.year}`,
+    `    <tr>
+      <td style="padding:12px 32px 4px;font-family:${FONT};color:#484b5e;font-size:16px;line-height:1.5">
+        Olá! Alguém iniciou o check-in com este e-mail de inscrição${who ? ` (${who})` : ""}. Digite este código na tela do check-in:
+      </td>
+    </tr>
+    <tr>
+      <td align="center" style="padding:20px 32px">
+        <div style="display:inline-block;background:rgba(133,91,251,0.16);border-radius:14px;padding:16px 28px;font-family:'Courier New',monospace;font-size:34px;font-weight:700;letter-spacing:8px;color:${ACCENT}">${digits}</div>
+        <div style="font-family:${FONT};font-size:13px;color:#686b82;margin-top:10px">Vale por 10 minutos.</div>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:0 32px 28px;font-family:${FONT};font-size:14px;line-height:1.6;color:#484b5e">
+        Nas duplas, o código vale para os dois integrantes. Se o check-in é do seu parceiro ou parceira, repasse o código só para essa pessoa.
+        <br><br>Não pediu este código? Ignore este e-mail: sem ele, ninguém conclui o check-in.
+        <br><br><a href="${escapeHtml(data.checkinUrl)}" style="color:#5741d8">Abrir o check-in</a>
+      </td>
+    </tr>`,
+  );
+}
+
+export function checkinCodeEmailText(data: Omit<CheckinCodeEmailData, "to">) {
+  const who = listNames(data.athletes);
+  return [
+    `Check-in do atleta · ${event.name} ${event.year}`,
+    "",
+    `Código de confirmação do check-in${who ? ` (${who})` : ""}: ${data.code}`,
+    "Vale por 10 minutos.",
+    "",
+    "Nas duplas, o código vale para os dois integrantes. Repasse só para o seu parceiro ou parceira.",
+    "Não pediu este código? Ignore este e-mail.",
+    "",
+    `Abrir o check-in: ${data.checkinUrl}`,
+  ].join("\n");
+}
+
+export function buildCheckinCodeEmail(data: CheckinCodeEmailData): EmailMessage {
+  return {
+    to: data.to,
+    subject: `${data.code} é seu código do check-in — ${event.name} ${event.year}`,
+    html: checkinCodeEmailHtml(data),
+    text: checkinCodeEmailText(data),
+    inline: [],
+  };
+}
+
+/** Envia o código do check-in; retorna false se nenhum provedor estiver configurado. */
+export const sendCheckinCodeEmail = (data: CheckinCodeEmailData) => deliver(() => buildCheckinCodeEmail(data));
+
+// ---------------------------------------------------------------------------
+// Check-in reaberto pela organização (Story 4.4)
+// ---------------------------------------------------------------------------
+export type CheckinReopenedEmailData = {
+  to: string;
+  athleteName: string;
+  competition: string;
+  /** Motivo em português, ex.: "Atestado ilegível ou inválido". */
+  reason: string;
+  checkinUrl: string;
+};
+
+export function checkinReopenedEmailHtml(data: Omit<CheckinReopenedEmailData, "to">) {
+  return emailShell(
+    "Faça o check-in de novo",
+    `A organização reabriu o check-in de ${data.athleteName}.`,
+    `Check-in do atleta · ${data.competition}`,
+    `    <tr>
+      <td style="padding:12px 32px 4px;font-family:${FONT};color:#484b5e;font-size:16px;line-height:1.5">
+        Olá! A organização reabriu o check-in de <strong style="color:#101114">${escapeHtml(data.athleteName)}</strong>. O termo enviado antes foi arquivado e é preciso fazer o check-in de novo: código, PAR-Q, termo e atestado médico.
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:16px 32px 0">
+        <div style="background:#f4f4f7;border-radius:12px;padding:14px 16px;font-family:${FONT};font-size:14px;line-height:1.5;color:#484b5e"><strong style="color:#101114">Motivo:</strong> ${escapeHtml(data.reason)}</div>
+      </td>
+    </tr>
+    <tr>
+      <td align="center" style="padding:24px 32px">
+        <a href="${escapeHtml(data.checkinUrl)}" style="display:inline-block;background:${ACCENT};color:#ffffff;font-family:${FONT};font-size:15px;font-weight:600;text-decoration:none;border-radius:12px;padding:14px 28px">Fazer o check-in</a>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:0 32px 28px;font-family:${FONT};font-size:14px;line-height:1.6;color:#484b5e">
+        Use este mesmo e-mail da inscrição para receber o código. Dúvidas? Fale com a organização do evento.
+      </td>
+    </tr>`,
+  );
+}
+
+export function checkinReopenedEmailText(data: Omit<CheckinReopenedEmailData, "to">) {
+  return [
+    `Check-in do atleta · ${data.competition}`,
+    "",
+    `A organização reabriu o check-in de ${data.athleteName}. O termo enviado antes foi arquivado e é preciso fazer o check-in de novo: código, PAR-Q, termo e atestado médico.`,
+    "",
+    `Motivo: ${data.reason}`,
+    "",
+    `Fazer o check-in: ${data.checkinUrl}`,
+    "Use este mesmo e-mail da inscrição para receber o código. Dúvidas? Fale com a organização do evento.",
+  ].join("\n");
+}
+
+export function buildCheckinReopenedEmail(data: CheckinReopenedEmailData): EmailMessage {
+  return {
+    to: data.to,
+    subject: `Faça o check-in de novo — ${data.athleteName}`,
+    html: checkinReopenedEmailHtml(data),
+    text: checkinReopenedEmailText(data),
+    inline: [],
+  };
+}
+
+/** Avisa que o check-in foi reaberto; retorna false se nenhum provedor estiver configurado. */
+export const sendCheckinReopenedEmail = (data: CheckinReopenedEmailData) => deliver(() => buildCheckinReopenedEmail(data));
+
+// ---------------------------------------------------------------------------
+// Acesso da organização: convite e redefinição de senha
+// ---------------------------------------------------------------------------
+export type AuthLinkKind = "invite" | "recovery";
+
+export type AuthLinkEmailData = {
+  to: string;
+  kind: AuthLinkKind;
+  /** Link de uso único para definir a senha. */
+  actionUrl: string;
+  name?: string;
+};
+
+const authLinkCopy: Record<AuthLinkKind, { subject: string; title: string; intro: string; cta: string; ignore: string }> = {
+  invite: {
+    subject: "Seu acesso à organização",
+    title: "Você foi convidado",
+    intro: "Você recebeu acesso à área da organização. Crie sua senha para entrar.",
+    cta: "Criar minha senha",
+    ignore: "Não esperava este convite? Ignore este e-mail.",
+  },
+  recovery: {
+    subject: "Redefinir sua senha",
+    title: "Redefinir senha",
+    intro: "Recebemos um pedido para redefinir a senha da sua conta. Use o botão abaixo para criar uma nova.",
+    cta: "Criar nova senha",
+    ignore: "Não pediu? Ignore este e-mail: sua senha atual continua valendo.",
+  },
+};
+
+export function authLinkEmailHtml(data: Omit<AuthLinkEmailData, "to">) {
+  const copy = authLinkCopy[data.kind];
+  const greeting = data.name ? `Olá, ${escapeHtml(firstName(data.name))}! ` : "Olá! ";
+  return `<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(copy.title)}</title></head>
+<body style="margin:0;padding:0;background:#f4f4f7">
+<div style="display:none;max-height:0;overflow:hidden">${escapeHtml(copy.intro)}</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f7"><tr><td align="center" style="padding:24px 12px">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border:1px solid #dedee5;border-radius:16px;border-collapse:separate">
+    <tr>
+      <td style="padding:28px 32px 8px;font-family:${FONT};color:#101114">
+        <div style="font-size:14px;color:#686b82">${escapeHtml(event.name)} ${event.year} · Organização</div>
+        <div style="font-size:22px;font-weight:700;margin-top:6px">${escapeHtml(copy.title)}</div>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:12px 32px 4px;font-family:${FONT};color:#484b5e;font-size:16px;line-height:1.5">${greeting}${escapeHtml(copy.intro)}</td>
+    </tr>
+    <tr>
+      <td align="center" style="padding:24px 32px">
+        <a href="${escapeHtml(data.actionUrl)}" style="display:inline-block;background:${ACCENT};color:#ffffff;font-family:${FONT};font-size:15px;font-weight:600;text-decoration:none;border-radius:12px;padding:14px 28px">${escapeHtml(copy.cta)}</a>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:0 32px 28px;font-family:${FONT};font-size:14px;line-height:1.6;color:#484b5e">
+        O link vale por tempo limitado e pode ser usado uma única vez. Não encaminhe este e-mail.
+        <br><br>${escapeHtml(copy.ignore)}
+      </td>
+    </tr>
+  </table>
+  <div style="font-family:${FONT};font-size:12px;color:#686b82;padding:16px 20px 0;text-align:center">${escapeHtml(event.name)} ${event.year} · ${escapeHtml(event.tagline)} · ${escapeHtml(event.endorsement)}</div>
+</td></tr></table>
+</body>
+</html>`;
+}
+
+export function authLinkEmailText(data: Omit<AuthLinkEmailData, "to">) {
+  const copy = authLinkCopy[data.kind];
+  return [
+    `${data.name ? `Olá, ${firstName(data.name)}!` : "Olá!"} ${copy.intro}`,
+    "",
+    `${copy.cta}: ${data.actionUrl}`,
+    "",
+    "O link vale por tempo limitado e pode ser usado uma única vez. Não encaminhe este e-mail.",
+    copy.ignore,
+  ].join("\n");
+}
+
+export function buildAuthLinkEmail(data: AuthLinkEmailData): EmailMessage {
+  return {
+    to: data.to,
+    subject: `${authLinkCopy[data.kind].subject} — ${event.name} ${event.year}`,
+    html: authLinkEmailHtml(data),
+    text: authLinkEmailText(data),
+    inline: [],
+  };
+}
+
+/** Envia convite ou link de redefinição de senha; retorna false se nenhum provedor estiver configurado. */
+export const sendAuthLinkEmail = (data: AuthLinkEmailData) => deliver(() => buildAuthLinkEmail(data));

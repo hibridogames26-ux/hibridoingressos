@@ -34,3 +34,11 @@ export const badgeDanger =
 
 export const badgeBrand =
   "inline-flex items-center rounded-md bg-brand-subtle px-2 py-0.5 text-xs font-medium text-brand";
+
+/** Ação destrutiva confirmada (ex.: refazer check-in). */
+export const btnDanger =
+  `inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-danger px-4 py-[13px] text-base font-semibold text-white transition duration-150 hover:bg-danger-ink active:bg-danger-ink disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger ${press}`;
+
+/** Abre uma ação destrutiva (pede confirmação antes). */
+export const btnDangerOutline =
+  `inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-danger bg-surface px-4 py-[11px] text-base font-medium text-danger-ink transition duration-150 hover:bg-danger/8 active:bg-danger/12 disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger ${press}`;

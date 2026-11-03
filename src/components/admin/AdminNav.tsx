@@ -11,6 +11,7 @@ const items: NavItem[] = [
   { href: "/admin/ingressos", label: "Ingressos" },
   { href: "/admin/pedidos", label: "Pedidos" },
   { href: "/admin/entradas", label: "Entradas" },
+  { href: "/admin/documentos", label: "Documentos" },
   // Camisas: domínio separado dos ingressos. O teste de pagamento fica sob "Camisas".
   {
     href: "/admin/camisas",

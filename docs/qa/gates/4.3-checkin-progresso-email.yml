@@ -1,0 +1,25 @@
+schema: 1
+story: '4.3'
+gate: CONCERNS
+status_reason: 'Todos os critérios atendidos e verificados no navegador contra o Supabase local; nenhum nome sai para o público. Ressalvas operacionais: as migrations precisam ir para produção antes do deploy, e o envio completo do termo não foi refeito no navegador.'
+reviewer: 'Quinn'
+reviewed_revision: 'tree:6b0c3662b0a2a70ba3ac954b11dc480e4a840376'
+updated: '2026-11-03T12:39:40Z'
+top_issues:
+  - id: 'OPS-001'
+    severity: medium
+    finding: 'O check-in depende das migrations 20261102000000, 20261103000000 e 20261103010000. Sem elas, pedir o código falha (função issue_checkin_email_code ausente).'
+    suggested_action: 'Rodar npm run db:push no projeto de produção antes de levar o branch para o main.'
+  - id: 'TEST-001'
+    severity: low
+    finding: 'O envio completo do termo (assinatura e upload do atestado) não foi refeito no navegador depois da troca da sessão por e-mail.'
+    suggested_action: 'Fazer um check-in completo em staging/preview com um e-mail de teste antes de divulgar o link.'
+  - id: 'SEC-001'
+    severity: low
+    finding: 'A sessão do e-mail continua por 2 h depois do envio do termo (de propósito, para o parceiro da dupla). Em aparelho compartilhado, quem pegar o aparelho vê os atletas daquele e-mail.'
+    suggested_action: 'Manter; o botão “Usar outro e-mail” encerra a sessão. Reavaliar se a portaria usar um aparelho compartilhado.'
+  - id: 'MNT-001'
+    severity: low
+    finding: 'athlete_checkin_codes, issue_checkin_code e verify_checkin_code (Story 4.1) ficaram sem uso.'
+    suggested_action: 'Remover numa migration futura, depois que a 4.3 estiver em produção.'
+waiver: { active: false }

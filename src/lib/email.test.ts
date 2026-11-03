@@ -1,13 +1,33 @@
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
-const { buildShirtEmail, buildTicketEmail, emailProvider, qrCid, shirtEmailHtml, shirtEmailText, ticketEmailHtml, ticketEmailText } = await import("./email");
+const { buildCheckinCodeEmail, buildCheckinReopenedEmail, buildShirtEmail, buildTicketEmail, authLinkEmailHtml, authLinkEmailText, buildAuthLinkEmail, emailProviders, qrCid, shirtEmailHtml, shirtEmailText, ticketEmailHtml, ticketEmailText } = await import("./email");
 
 describe("email", () => {
-  it("prioriza Gmail, depois Resend", () => {
-    expect(emailProvider({ GMAIL_USER: "a@gmail.com", GMAIL_APP_PASSWORD: "x", RESEND_API: "r" })).toBe("gmail");
-    expect(emailProvider({ GMAIL_USER: "a@gmail.com", RESEND_API: "r" })).toBe("resend");
-    expect(emailProvider({})).toBeNull();
+  it("usa o Resend como principal e o Gmail só como reserva", () => {
+    expect(emailProviders({ GMAIL_USER: "a@gmail.com", GMAIL_APP_PASSWORD: "x", RESEND_API: "r" })).toEqual(["resend", "gmail"]);
+    expect(emailProviders({ RESEND_API_KEY: "r" })).toEqual(["resend"]);
+    expect(emailProviders({ GMAIL_USER: "a@gmail.com", RESEND_API: "r" })).toEqual(["resend"]);
+    expect(emailProviders({ GMAIL_USER: "a@gmail.com", GMAIL_APP_PASSWORD: "x" })).toEqual(["gmail"]);
+    expect(emailProviders({})).toEqual([]);
+  });
+
+  describe("convite e redefinição de senha", () => {
+    const url = "https://site/auth/confirm?token_hash=abc&type=recovery&next=/definir-senha";
+
+    it("monta o e-mail de redefinição com o link e escapa o nome", () => {
+      const message = buildAuthLinkEmail({ to: "a@b.com", kind: "recovery", actionUrl: url, name: "<b>Ana Souza" });
+      expect(message.subject).toContain("Redefinir sua senha");
+      expect(message.html).toContain("token_hash=abc&amp;type=recovery");
+      expect(message.html).toContain("&lt;b&gt;Ana");
+      expect(message.html).not.toContain("<b>Ana");
+      expect(message.text).toContain(url);
+    });
+
+    it("usa o texto de convite para novos acessos", () => {
+      expect(authLinkEmailHtml({ kind: "invite", actionUrl: url })).toContain("Criar minha senha");
+      expect(authLinkEmailText({ kind: "invite", actionUrl: url })).toContain("Criar minha senha");
+    });
   });
 
   it("escapa dados do comprador no HTML", () => {
@@ -104,6 +124,36 @@ describe("email", () => {
       expect(msg.inline).toHaveLength(0);
       expect(msg.subject).toContain("Encomenda confirmada");
       expect(msg.html).not.toContain("QR Code");
+    });
+  });
+
+  describe("check-in do atleta", () => {
+    it("código cita os atletas do e-mail, escapa nomes e aponta para o check-in", () => {
+      const msg = buildCheckinCodeEmail({
+        to: "cap@e.com",
+        athletes: ["Mariana <b>", "Rafael Costa"],
+        code: "048213",
+        checkinUrl: "https://site/check-in",
+      });
+      expect(msg.subject).toBe("048213 é seu código do check-in — Híbrido Games 2026");
+      expect(msg.html).toContain("Mariana &lt;b&gt;");
+      expect(msg.html).not.toContain("Mariana <b>");
+      expect(msg.html).toContain("https://site/check-in");
+      expect(msg.text).toContain("(Mariana <b> e Rafael Costa): 048213");
+    });
+
+    it("check-in reaberto informa o motivo e o link", () => {
+      const msg = buildCheckinReopenedEmail({
+        to: "cap@e.com",
+        athleteName: "Mariana Alves",
+        competition: "Híbrido Games 2026",
+        reason: "Atestado ilegível ou inválido",
+        checkinUrl: "https://site/check-in",
+      });
+      expect(msg.subject).toBe("Faça o check-in de novo — Mariana Alves");
+      expect(msg.html).toContain("Atestado ilegível ou inválido");
+      expect(msg.html).toContain('href="https://site/check-in"');
+      expect(msg.text).toContain("Motivo: Atestado ilegível ou inválido");
     });
   });
 });

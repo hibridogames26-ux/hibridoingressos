@@ -1,0 +1,21 @@
+schema: 1
+story: '4.4'
+gate: CONCERNS
+status_reason: 'Edição, reset com arquivo, histórico, aviso por e-mail e importação preservando correções verificados ponta a ponta; permissões só de admin cobertas por testes no banco. Ressalvas: migrations pendentes em produção e uma lacuna de permissão anterior em profiles.'
+reviewer: 'Quinn'
+reviewed_revision: 'tree:6b0c3662b0a2a70ba3ac954b11dc480e4a840376'
+updated: '2026-11-03T12:39:40Z'
+top_issues:
+  - id: 'OPS-001'
+    severity: medium
+    finding: 'Editar cadastro e Refazer check-in exigem a migration 20261103010000; sem ela a página mostra o aviso e esconde as ações.'
+    suggested_action: 'Rodar npm run db:push no projeto de produção antes do deploy.'
+  - id: 'SEC-002'
+    severity: low
+    finding: 'Anterior a esta story: a migration inicial não concede SELECT em public.profiles a authenticated. Em projeto Supabase novo (sem as permissões automáticas antigas) o login do admin falha.'
+    suggested_action: 'Criar migration com grant select on public.profiles to authenticated (a RLS já limita ao próprio perfil ou admin).'
+  - id: 'TEST-002'
+    severity: low
+    finding: 'A preservação de campos na importação foi verificada com planilha sintética; o script não tem teste automatizado.'
+    suggested_action: 'Extrair keepEdits para um módulo testável numa próxima mexida no script.'
+waiver: { active: false }

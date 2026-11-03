@@ -148,3 +148,52 @@ não sai da grade: desabilite-o.
 **Histórico**: modo de venda, tamanhos, preço, lote, textos e cupons são registrados em `shirt_audit_log` por gatilhos do
 banco (quem, quando e o quê, inclusive alterações feitas por `npm run shirt:config`). O admin só lê; ninguém edita.
 
+
+## Check-in do atleta (Story 4.1)
+
+Rotas públicas: `/check-in` (barra de progresso e entrada pelo e-mail da inscrição → código → escolha do atleta) e
+`/check-in/<id-do-atleta>` (dados e PAR-Q → termo → atestado e assinatura na tela). A home ganhou o botão
+"Check-in do atleta". Desde a Story 4.3 a página pública não lista nomes: só mostra quantos atletas já fizeram o
+check-in e quantos faltam.
+
+### Antes de abrir
+1. **Aplicar as migrations** com `npm run db:push`:
+   - `20261102000000_athlete_checkin.sql` (Story 4.1): `athlete_registrations`, `athletes`, `athlete_checkins` e o
+     bucket **privado** `checkin-docs` (assinaturas e atestados; até 10 MB; JPG, PNG, WEBP, HEIC ou PDF).
+   - `20261103000000_checkin_email_session.sql` (Story 4.3): código e sessão pelo e-mail da inscrição
+     (`athlete_email_codes`, `issue_checkin_email_code`/`verify_checkin_email_code`) e limite de e-mails não
+     encontrados por IP (`athlete_email_misses`).
+   - `20261103010000_checkin_admin_edit_reset.sql` (Story 4.4): campos corrigidos no painel (`admin_edited_fields`),
+     histórico (`athlete_audit_log`), termos arquivados (`athlete_checkins_archive`) e as funções
+     `admin_update_athlete`/`admin_reset_athlete_checkin` (só admin ativo).
+2. **Importar os atletas** das planilhas da plataforma de inscrição (idempotente; pode rodar de novo a cada nova exportação):
+
+   ```bash
+   npm run athletes:import -- --dry-run                        # confere o que será importado
+   npm run athletes:import                                     # camisas-hibrido-games.xls e camisas-h-birdo-race.xls
+   npm run athletes:import -- outra-exportacao.xls             # outras planilhas
+   ```
+
+   Inscrições canceladas não aparecem. Uma inscrição aprovada que sumir da planilha (na mesma competição) passa a
+   cancelada. Check-ins já feitos nunca são apagados. Campos corrigidos no painel (Documentos → atleta → Editar
+   cadastro) não são sobrescritos: o terminal lista o que foi preservado.
+3. **E-mail**: o código usa o mesmo provedor dos ingressos (Gmail com senha de app ou Resend). Sem provedor, em
+   desenvolvimento o código aparece no log do servidor e na tela; em produção o envio falha com aviso ao atleta.
+4. Opcional: `CHECKIN_SECRET` (texto aleatório longo) para o HMAC dos códigos e sessões; sem ela é usada a
+   `SUPABASE_SERVICE_ROLE_KEY`.
+
+### Regras
+- O atleta digita o e-mail da inscrição. E-mail sem inscrição aprovada recebe resposta clara, com a orientação de
+  procurar a organização; um IP com 10 e-mails não encontrados na última hora fica bloqueado por uma hora.
+- Código de 6 números, vale 10 minutos, 5 tentativas, reenvio após 60 s, até 5 códigos por hora por e-mail.
+- O código certo abre uma sessão de 2 horas naquele aparelho (cookie httpOnly) com os atletas das inscrições daquele
+  e-mail (na dupla, os dois). A sessão vale só enquanto o e-mail continuar sendo o da inscrição: trocar o e-mail no
+  painel encerra o acesso do antigo. O rascunho fica salvo no aparelho.
+- O termo guardado em `athlete_checkins.terms_text` é o texto exato aceito (versão em `terms_version`), com IP,
+  navegador, e-mail confirmado, assinatura(s) e atestado.
+- Ninguém de fora lê esses dados: `anon` não tem acesso; admin ativo só lê as tabelas (sem os códigos). Os arquivos
+  ficam no bucket privado e podem ser vistos pelo painel do Supabase (Storage → `checkin-docs/<id-do-atleta>/`).
+- Correções pelo painel (Story 4.4), só com a conta de admin: **Editar cadastro** (nome, Instagram, camisa, e-mail,
+  telefone, equipe, box, competição, categoria e situação) e **Refazer check-in** (motivo obrigatório; o termo vai
+  para `athlete_checkins_archive` com os caminhos da assinatura e do atestado, que continuam no Storage; o atleta pode
+  ser avisado por e-mail). Tudo fica no histórico da página do atleta.

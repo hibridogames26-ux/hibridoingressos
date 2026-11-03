@@ -12,6 +12,7 @@
     "seed:admin": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/seed-admin.mts",
     "seed:test": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/seed-test-data.mts",
     "shirt:config": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/shirt-config.mts",
+    "athletes:import": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/import-athletes.mts",
     "db:push": "supabase db push"
   },
   "dependencies": {
@@ -21,6 +22,7 @@
     "exceljs": "^4.4.0",
     "next": "16.3.8",
     "nodemailer": "^10.0.14",
+    "pdf-lib": "^1.17.1",
     "qr-scanner": "^1.4.2",
     "qrcode": "^1.5.4",
     "react": "19.2.8",
