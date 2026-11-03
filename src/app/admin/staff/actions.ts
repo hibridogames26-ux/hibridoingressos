@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getCurrentProfile, type Role } from "@/lib/auth";
-import { siteUrl } from "@/lib/env";
+import { sendAuthLink } from "@/lib/auth-links";
 import { createAdminClient } from "@/lib/supabase/server";
 
 export type StaffFormState = { error?: string; success?: string } | undefined;
@@ -18,8 +18,6 @@ async function assertAdmin() {
   return profile;
 }
 
-const inviteRedirect = () => `${siteUrl()}/auth/confirm?next=/definir-senha`;
-
 export async function inviteStaff(_: StaffFormState, formData: FormData): Promise<StaffFormState> {
   await assertAdmin();
 
@@ -30,23 +28,25 @@ export async function inviteStaff(_: StaffFormState, formData: FormData): Promis
     return { error: "Informe nome e um e-mail válido." };
   }
 
-  const admin = createAdminClient();
-  const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
-    data: { name },
-    redirectTo: inviteRedirect(),
-  });
-  if (error || !data.user) {
-    const exists = error?.message?.toLowerCase().includes("already");
+  let result;
+  try {
+    result = await sendAuthLink({ kind: "invite", email, name });
+  } catch (error) {
+    return { error: `Não foi possível enviar o convite: ${error instanceof Error ? error.message : error}` };
+  }
+  if (!result.ok) {
+    const exists = result.code === "email_exists" || result.error.toLowerCase().includes("already");
     return {
       error: exists
         ? "Este e-mail já tem uma conta. Use “Reenviar acesso” na lista."
-        : `Não foi possível enviar o convite: ${error?.message ?? "erro desconhecido"}`,
+        : `Não foi possível enviar o convite: ${result.error}`,
     };
   }
 
+  const admin = createAdminClient();
   const { error: profileError } = await admin
     .from("profiles")
-    .upsert({ user_id: data.user.id, name, email, role, active: true });
+    .upsert({ user_id: result.userId, name, email, role, active: true });
   if (profileError) {
     return { error: `Convite enviado, mas o perfil não foi salvo: ${profileError.message}` };
   }
@@ -82,16 +82,12 @@ export async function resendAccess(userId: string): Promise<string> {
   const { email, email_confirmed_at } = data.user;
 
   if (!email_confirmed_at) {
-    const { error: inviteError } = await admin.auth.admin.inviteUserByEmail(email, {
-      redirectTo: inviteRedirect(),
-    });
-    if (inviteError) throw new Error(`Falha ao reenviar convite: ${inviteError.message}`);
+    const invite = await sendAuthLink({ kind: "invite", email });
+    if (!invite.ok) throw new Error(`Falha ao reenviar convite: ${invite.error}`);
     return `Convite reenviado para ${email}.`;
   }
 
-  const { error: resetError } = await admin.auth.resetPasswordForEmail(email, {
-    redirectTo: inviteRedirect(),
-  });
-  if (resetError) throw new Error(`Falha ao enviar o link: ${resetError.message}`);
+  const reset = await sendAuthLink({ kind: "recovery", email });
+  if (!reset.ok) throw new Error(`Falha ao enviar o link: ${reset.error}`);
   return `Link para definir senha enviado para ${email}.`;
 }
