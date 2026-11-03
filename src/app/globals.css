@@ -58,6 +58,8 @@
   --animate-qr-focus: qr-focus 500ms var(--ease-out-expo) backwards;
   /* Pix gerado: o QR é revelado como um papel saindo da impressora. */
   --animate-wipe: wipe 450ms var(--ease-out-expo) backwards;
+  /* Faixa de apoiadores: único movimento linear do site, porque precisa de ritmo constante. */
+  --animate-marquee: marquee 34s linear infinite;
   /* Troca de painel, mensagens e overlays. */
   --animate-panel: panel 220ms var(--ease-out-expo) backwards;
   --animate-message: message 200ms var(--ease-out-expo) backwards;
@@ -175,6 +177,21 @@
     from {
       background-color: var(--brand-subtle);
     }
+  }
+  @keyframes marquee {
+    to {
+      transform: translateX(-50%);
+    }
+  }
+}
+
+/* Faixa de apoiadores: as logos entram e saem suavemente pelas bordas. */
+.sponsors-fade {
+  mask-image: linear-gradient(90deg, transparent, #000 9%, #000 91%, transparent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .sponsors-fade {
+    mask-image: none;
   }
 }
 

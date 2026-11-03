@@ -2,6 +2,7 @@ import Image from "next/image";
 import { Countdown } from "@/components/Countdown";
 import { HeroMedia } from "@/components/HeroMedia";
 import { LinkButton } from "@/components/LinkButton";
+import { SponsorsBand } from "@/components/SponsorsBand";
 import { event, links } from "@/config/event";
 
 /** Atraso de cada peça do hero, depois que o escudo entra em foco. */
@@ -57,6 +58,8 @@ export default function Home() {
           )}
         </div>
       </section>
+
+      <SponsorsBand />
 
       <section className="mx-auto flex w-full max-w-md flex-col gap-4 px-4 py-8">
         <h2 className="font-display text-[22px] font-semibold leading-tight">
