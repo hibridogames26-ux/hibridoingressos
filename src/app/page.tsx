@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { Countdown } from "@/components/Countdown";
+import { HeroMedia } from "@/components/HeroMedia";
 import { LinkButton } from "@/components/LinkButton";
 import { event, links } from "@/config/event";
 
@@ -12,15 +13,8 @@ export default function Home() {
   return (
     <main className="flex flex-1 flex-col">
       <section className="relative isolate overflow-hidden bg-ink text-white">
-        {/* Arte oficial do evento; a parte de baixo escurece para o texto ficar legível. */}
-        <Image
-          src="/images/hero-podio.webp"
-          alt=""
-          fill
-          priority
-          sizes="100vw"
-          className="-z-20 object-cover object-[50%_20%]"
-        />
+        {/* Vídeo de abertura que assenta na arte oficial do evento; a parte de baixo escurece para o texto ficar legível. */}
+        <HeroMedia />
         <div
           aria-hidden="true"
           className="absolute inset-0 -z-10 bg-gradient-to-b from-ink/10 via-ink/30 to-ink/95"
