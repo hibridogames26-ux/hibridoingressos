@@ -5,12 +5,15 @@ import { SHIRT_PHOTO_SIZE } from "@/config/shirts";
 const base =
   "flex min-h-14 w-full items-center justify-between gap-4 rounded-xl px-4 py-[13px] text-left transition duration-150";
 
-function Chevron() {
+function Chevron({ light = false }: { light?: boolean }) {
+  const color = light
+    ? "text-white/80 group-hover:text-white group-active:text-white"
+    : "text-muted group-hover:text-brand group-active:text-brand";
   return (
     <svg
       aria-hidden="true"
       viewBox="0 0 20 20"
-      className="size-5 shrink-0 text-muted transition duration-200 ease-out-expo group-hover:translate-x-0.5 group-hover:text-brand group-active:translate-x-1 group-active:text-brand"
+      className={`size-5 shrink-0 transition duration-200 ease-out-expo group-hover:translate-x-0.5 group-active:translate-x-1 ${color}`}
     >
       <path
         d="M7.5 4.5 13 10l-5.5 5.5"
@@ -24,12 +27,12 @@ function Chevron() {
   );
 }
 
-export function LinkButton({ label, description, href, thumbnail, badge }: EventLink) {
+export function LinkButton({ label, description, href, thumbnail, badge, primary }: EventLink) {
   const text = (
     <span className="flex flex-col">
       <span className="text-base font-semibold">{label}</span>
       {description && (
-        <span className="text-sm text-cool-gray">{description}</span>
+        <span className={`text-sm ${primary ? "text-white/80" : "text-cool-gray"}`}>{description}</span>
       )}
     </span>
   );
@@ -49,11 +52,14 @@ export function LinkButton({ label, description, href, thumbnail, badge }: Event
   }
 
   const external = /^https?:\/\//.test(href);
+  const tone = primary
+    ? "border border-brand bg-brand text-white shadow-whisper hover:bg-brand-dark active:scale-[0.99] active:bg-brand-deep"
+    : "border border-line bg-surface shadow-whisper hover:border-brand-dark active:scale-[0.99] active:border-brand-dark active:bg-brand-subtle/30";
   return (
     <a
       href={href}
       {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-      className={`${base} group border border-line bg-surface shadow-whisper hover:border-brand-dark active:scale-[0.99] active:border-brand-dark active:bg-brand-subtle/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand`}
+      className={`${base} group ${tone} focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand`}
     >
       {thumbnail && (
         <Image
@@ -69,7 +75,7 @@ export function LinkButton({ label, description, href, thumbnail, badge }: Event
       {badge && (
         <span className="shrink-0 rounded-md bg-brand-subtle px-2 py-0.5 text-xs font-medium text-brand-dark">{badge}</span>
       )}
-      <Chevron />
+      <Chevron light={primary} />
     </a>
   );
 }
