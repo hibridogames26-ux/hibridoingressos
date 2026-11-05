@@ -6,7 +6,7 @@ import { sponsors } from "@/config/sponsors";
 
 /**
  * Faixa contínua de apoiadores, logo abaixo do hero.
- * - Fundo escuro igual ao do hero: as logos são brancas sobre transparente.
+ * - Fundo escuro igual ao do hero: logos claras sobre transparente.
  * - Passa da direita para a esquerda em loop (duas cópias da lista, -50% fecha o ciclo).
  * - Para com o mouse por cima e pelo botão de pausa (44 px).
  * - Movimento reduzido: sem animação, as logos ficam paradas e centralizadas em linhas.
@@ -18,18 +18,32 @@ function Logos({ hidden = false }: { hidden?: boolean }) {
       aria-hidden={hidden || undefined}
       className={`flex shrink-0 items-center gap-(--gap) pr-(--gap) motion-reduce:w-full motion-reduce:shrink motion-reduce:flex-wrap motion-reduce:justify-center motion-reduce:gap-y-5 motion-reduce:px-4 motion-reduce:pt-1.5 ${hidden ? "motion-reduce:hidden" : ""}`}
     >
-      {sponsors.map((s) => (
-        <Image
-          key={s.src}
-          src={s.src}
-          alt={hidden ? "" : s.name}
-          width={s.width}
-          height={s.height}
-          sizes={`${Math.round(s.displayWidth * 1.35)}px`}
-          style={{ "--w": s.displayWidth } as CSSProperties}
-          className="h-auto w-[calc(var(--w)*var(--u)*1px)] shrink-0 select-none"
-        />
-      ))}
+      {sponsors.map((s) => {
+        const bounds = s.visibleBounds ?? { x: 0, y: 0, width: s.width, height: s.height };
+        const imageWidth = s.displayWidth * s.width / bounds.width;
+
+        return (
+          <div
+            key={s.src}
+            style={{ "--w": s.displayWidth, aspectRatio: `${bounds.width} / ${bounds.height}` } as CSSProperties}
+            className="relative w-[calc(var(--w)*var(--u)*1px)] shrink-0 overflow-hidden"
+          >
+            <Image
+              src={s.src}
+              alt={hidden ? "" : s.name}
+              width={s.width}
+              height={s.height}
+              sizes={`(min-width: 640px) ${Math.ceil(imageWidth * 1.35)}px, ${Math.ceil(imageWidth)}px`}
+              style={{
+                width: `${s.width / bounds.width * 100}%`,
+                left: `${-bounds.x / bounds.width * 100}%`,
+                top: `${-bounds.y / bounds.height * 100}%`,
+              }}
+              className="absolute h-auto max-w-none select-none"
+            />
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -65,7 +79,7 @@ export function SponsorsBand() {
       <div className="sponsors-fade mt-1.5 overflow-hidden">
         <div
           data-paused={paused}
-          style={{ animationDuration: "calc(34s * var(--u))" }}
+          style={{ animationDuration: "calc(44s * var(--u))" }}
           className="flex w-max animate-marquee group-hover:[animation-play-state:paused] data-[paused=true]:[animation-play-state:paused] motion-reduce:w-full motion-reduce:animate-none"
         >
           <Logos />

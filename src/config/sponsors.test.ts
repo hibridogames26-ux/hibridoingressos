@@ -18,6 +18,8 @@ describe("apoiadores", () => {
       "Roval Farmácia de Manipulação",
       "BSCross",
       "Sidore",
+      "Bárbaros Store",
+      "Fernanda Maia Odontologia e Estética",
     ]);
   });
 
@@ -35,5 +37,18 @@ describe("apoiadores", () => {
 
   it("dá a cada logo uma largura positiva", () => {
     for (const s of sponsors) expect(s.displayWidth, s.name).toBeGreaterThan(0);
+  });
+
+  it("mantém o recorte visível dentro do arquivo original", () => {
+    for (const s of sponsors) {
+      if (!s.visibleBounds) continue;
+      const { x, y, width, height } = s.visibleBounds;
+      expect(x, s.name).toBeGreaterThanOrEqual(0);
+      expect(y, s.name).toBeGreaterThanOrEqual(0);
+      expect(width, s.name).toBeGreaterThan(0);
+      expect(height, s.name).toBeGreaterThan(0);
+      expect(x + width, s.name).toBeLessThanOrEqual(s.width);
+      expect(y + height, s.name).toBeLessThanOrEqual(s.height);
+    }
   });
 });
