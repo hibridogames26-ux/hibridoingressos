@@ -12,7 +12,6 @@ function pngSize(file: string) {
 describe("apoiadores", () => {
   it("mantém a ordem apresentada e aprovada", () => {
     expect(sponsors.map((s) => s.name)).toEqual([
-      "Fuego Glasses",
       "FitBlock Training",
       "VUPT Gráfica Rápida",
       "Roval Farmácia de Manipulação",

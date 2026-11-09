@@ -19,10 +19,9 @@ export type Sponsor = {
 };
 
 export const sponsors: readonly Sponsor[] = [
-  { name: "Fuego Glasses", src: "/patrocinadores/fuego.png", width: 282, height: 324, displayWidth: 48 },
   { name: "FitBlock Training", src: "/patrocinadores/fitblock.png", width: 550, height: 250, displayWidth: 76 },
   { name: "VUPT Gráfica Rápida", src: "/patrocinadores/vupt.png", width: 602, height: 162, displayWidth: 112 },
-  { name: "Roval Farmácia de Manipulação", src: "/patrocinadores/roval.png", width: 552, height: 190, displayWidth: 100 },
+  { name: "Roval Farmácia de Manipulação", src: "/patrocinadores/roval.png", width: 552, height: 195, displayWidth: 100 },
   { name: "BSCross", src: "/patrocinadores/bscross.png", width: 530, height: 136, displayWidth: 118 },
   { name: "Sidore", src: "/patrocinadores/sidore.png", width: 532, height: 136, displayWidth: 108 },
   {
