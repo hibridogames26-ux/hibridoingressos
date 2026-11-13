@@ -171,3 +171,71 @@ describe("email", () => {
     });
   });
 });
+
+describe("e-mail da retirada de camisa", () => {
+  const pickup = {
+    to: "cap@e.com",
+    competition: "Híbrido Games 2026",
+    items: [
+      { athleteName: "Paulo <b>Henrique", teamName: "100% malte", size: "G" },
+      { athleteName: "Thiago Moura", teamName: "100% malte", size: "GG" },
+    ],
+    pickedByName: "Paulo Henrique",
+    pickedByRole: "integrante" as const,
+    document: null,
+    pickedAt: "2026-11-14T15:30:00Z",
+    deliveredByName: "Adm Teste",
+    note: null,
+  };
+
+  it("lista as camisas, quem retirou, quando e quem entregou, escapando o HTML", async () => {
+    const { buildShirtPickupEmail } = await import("./email");
+    const msg = buildShirtPickupEmail(pickup);
+    expect(msg.to).toBe("cap@e.com");
+    expect(msg.subject).toBe("Camisa retirada — Híbrido Games 2026");
+    expect(msg.inline).toHaveLength(0);
+    expect(msg.html).toContain("Paulo &lt;b&gt;Henrique");
+    expect(msg.html).not.toContain("Paulo <b>Henrique");
+    expect(msg.html).toContain("1 camisa · G");
+    expect(msg.html).toContain("1 camisa · GG");
+    expect(msg.html).toContain("Paulo Henrique (integrante da inscrição)");
+    // 15:30 UTC = 12:30 em São Paulo.
+    expect(msg.html).toContain("14/11/2026, 12:30");
+    expect(msg.html).toContain("Adm Teste");
+    expect(msg.text).toContain("Registramos a retirada das camisas de Paulo <b>Henrique e Thiago Moura.");
+    expect(msg.text).toContain("- Thiago Moura (100% malte): 1 camisa, tamanho GG");
+    expect(msg.text).toContain("Retirado por: Paulo Henrique (integrante da inscrição)");
+    expect(msg.text).toContain("Entregue por: Adm Teste");
+    expect(msg.text).not.toContain("Documento:");
+    expect(msg.text).not.toContain("Observação:");
+  });
+
+  it("outra pessoa: mostra o documento e a observação; individual não repete a equipe", async () => {
+    const { shirtPickupEmailHtml, shirtPickupEmailText } = await import("./email");
+    const data = {
+      ...pickup,
+      items: [{ athleteName: "Asafe Alves", teamName: null, size: "M" }],
+      pickedByName: "Maria Souza",
+      pickedByRole: "terceiro" as const,
+      document: "123.456.789-00",
+      deliveredByName: null,
+      note: "Levou para o irmão",
+    };
+    const text = shirtPickupEmailText(data);
+    expect(text).toContain("Registramos a retirada da camisa de Asafe Alves.");
+    expect(text).toContain("- Asafe Alves: 1 camisa, tamanho M");
+    expect(text).toContain("Retirado por: Maria Souza\n");
+    expect(text).toContain("Documento: 123.456.789-00");
+    expect(text).toContain("Observação: Levou para o irmão");
+    expect(text).not.toContain("Entregue por:");
+    const html = shirtPickupEmailHtml(data);
+    expect(html).toContain("Levou para o irmão");
+    expect(html).toContain("Não reconhece esta retirada?");
+  });
+
+  it("o próprio atleta aparece identificado", async () => {
+    const { shirtPickupEmailText } = await import("./email");
+    const text = shirtPickupEmailText({ ...pickup, items: [pickup.items[1]], pickedByName: "Thiago Moura", pickedByRole: "atleta" });
+    expect(text).toContain("Retirado por: Thiago Moura (o próprio atleta)");
+  });
+});

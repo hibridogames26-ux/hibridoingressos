@@ -12,6 +12,8 @@ const items: NavItem[] = [
   { href: "/admin/pedidos", label: "Pedidos" },
   { href: "/admin/entradas", label: "Entradas" },
   { href: "/admin/documentos", label: "Documentos" },
+  // Entrega das camisas dos atletas (kit da inscrição); as encomendas da loja ficam em "Camisas".
+  { href: "/admin/retiradas", label: "Retiradas" },
   // Camisas: domínio separado dos ingressos. O teste de pagamento fica sob "Camisas".
   {
     href: "/admin/camisas",

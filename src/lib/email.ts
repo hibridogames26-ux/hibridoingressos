@@ -3,7 +3,7 @@ import nodemailer from "nodemailer";
 import { Resend } from "resend";
 import { event } from "@/config/event";
 import QRCode from "qrcode";
-import { formatBRL, formatEventDateLong } from "@/lib/format";
+import { formatBRL, formatDateTime, formatEventDateLong } from "@/lib/format";
 import { paymentMethodLabel, type PaymentMethod } from "@/lib/labels";
 
 export type TicketEmailData = {
@@ -635,3 +635,115 @@ export function buildAuthLinkEmail(data: AuthLinkEmailData): EmailMessage {
 
 /** Envia convite ou link de redefinição de senha; retorna false se nenhum provedor estiver configurado. */
 export const sendAuthLinkEmail = (data: AuthLinkEmailData) => deliver(() => buildAuthLinkEmail(data));
+
+// ---------------------------------------------------------------------------
+// Retirada de camisa do atleta (Story 4.6)
+// ---------------------------------------------------------------------------
+/** Quem retirou, em relação aos atletas citados no e-mail. */
+export type ShirtPickupRole = "atleta" | "integrante" | "terceiro";
+
+export type ShirtPickupEmailData = {
+  to: string;
+  /** Ex.: "Híbrido Games 2026". */
+  competition: string;
+  /** Camisas entregues aos atletas deste e-mail. `teamName` nulo = inscrição individual. */
+  items: { athleteName: string; teamName: string | null; size: string }[];
+  pickedByName: string;
+  pickedByRole: ShirtPickupRole;
+  /** Documento informado quando outra pessoa retira. */
+  document: string | null;
+  /** Instante da retirada (ISO). */
+  pickedAt: string;
+  /** Administrador que entregou. */
+  deliveredByName: string | null;
+  note: string | null;
+};
+
+const pickupRoleText: Record<ShirtPickupRole, string> = {
+  atleta: " (o próprio atleta)",
+  integrante: " (integrante da inscrição)",
+  terceiro: "",
+};
+
+/** Linhas "rótulo: valor" comuns ao HTML e ao texto. */
+function pickupFacts(data: Omit<ShirtPickupEmailData, "to">): [string, string][] {
+  const facts: [string, string][] = [["Retirado por", `${data.pickedByName}${pickupRoleText[data.pickedByRole]}`]];
+  if (data.document) facts.push(["Documento", data.document]);
+  facts.push(["Data e hora", formatDateTime(data.pickedAt)]);
+  if (data.deliveredByName) facts.push(["Entregue por", data.deliveredByName]);
+  if (data.note) facts.push(["Observação", data.note]);
+  return facts;
+}
+
+const pickupIntro = (data: Omit<ShirtPickupEmailData, "to">, names: string) =>
+  data.items.length > 1 ? `Registramos a retirada das camisas de ${names}.` : `Registramos a retirada da camisa de ${names}.`;
+
+export function shirtPickupEmailHtml(data: Omit<ShirtPickupEmailData, "to">) {
+  const names = data.items.map((i) => `<strong style="color:#101114">${escapeHtml(i.athleteName)}</strong>`);
+  const who = names.length <= 1 ? (names[0] ?? "") : `${names.slice(0, -1).join(", ")} e ${names[names.length - 1]}`;
+  const items = data.items
+    .map(
+      (i, n) =>
+        `<tr><td style="padding:10px 0;font-family:${FONT};font-size:15px;color:#101114;vertical-align:top${n ? ";border-top:1px solid #dedee5" : ""}">${escapeHtml(i.athleteName)}${i.teamName ? `<div style="font-size:12px;color:#686b82">${escapeHtml(i.teamName)}</div>` : ""}</td><td align="right" style="padding:10px 0 10px 12px;font-family:${FONT};font-size:15px;font-weight:700;color:#101114;white-space:nowrap;vertical-align:top${n ? ";border-top:1px solid #dedee5" : ""}">1 camisa · ${escapeHtml(i.size)}</td></tr>`,
+    )
+    .join("");
+  const facts = pickupFacts(data)
+    .map(
+      ([label, value]) =>
+        `<tr><td style="padding:5px 0;font-family:${FONT};font-size:12px;color:#686b82;width:110px;vertical-align:top">${escapeHtml(label)}</td><td style="padding:5px 0;font-family:${FONT};font-size:15px;font-weight:600;color:#101114">${escapeHtml(value)}</td></tr>`,
+    )
+    .join("");
+
+  return emailShell(
+    "Camisa retirada",
+    `${pickupIntro(data, listNames(data.items.map((i) => i.athleteName)))} Retirado por ${data.pickedByName}.`,
+    `Retirada de camisa · ${data.competition}`,
+    `    <tr>
+      <td style="padding:12px 32px 4px;font-family:${FONT};color:#484b5e;font-size:16px;line-height:1.5">
+        Olá! ${pickupIntro(data, who)}
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:16px 32px 0">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #dedee5;border-bottom:1px solid #dedee5">${items}</table>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:16px 32px 0">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${facts}</table>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:20px 32px 28px">
+        <div style="background:#f4f4f7;border-radius:12px;padding:14px 16px;font-family:${FONT};font-size:14px;line-height:1.6;color:#484b5e">Não reconhece esta retirada? Fale com a organização do evento.</div>
+      </td>
+    </tr>`,
+  );
+}
+
+export function shirtPickupEmailText(data: Omit<ShirtPickupEmailData, "to">) {
+  return [
+    `Retirada de camisa · ${data.competition}`,
+    "",
+    `Olá! ${pickupIntro(data, listNames(data.items.map((i) => i.athleteName)))}`,
+    "",
+    ...data.items.map((i) => `- ${i.athleteName}${i.teamName ? ` (${i.teamName})` : ""}: 1 camisa, tamanho ${i.size}`),
+    "",
+    ...pickupFacts(data).map(([label, value]) => `${label}: ${value}`),
+    "",
+    "Não reconhece esta retirada? Fale com a organização do evento.",
+  ].join("\n");
+}
+
+export function buildShirtPickupEmail(data: ShirtPickupEmailData): EmailMessage {
+  return {
+    to: data.to,
+    subject: `Camisa retirada — ${data.competition}`,
+    html: shirtPickupEmailHtml(data),
+    text: shirtPickupEmailText(data),
+    inline: [],
+  };
+}
+
+/** Avisa que a camisa foi retirada; retorna false se nenhum provedor estiver configurado. */
+export const sendShirtPickupEmail = (data: ShirtPickupEmailData) => deliver(() => buildShirtPickupEmail(data));

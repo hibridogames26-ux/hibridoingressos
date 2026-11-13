@@ -197,3 +197,40 @@ check-in e quantos faltam.
   telefone, equipe, box, competição, categoria e situação) e **Refazer check-in** (motivo obrigatório; o termo vai
   para `athlete_checkins_archive` com os caminhos da assinatura e do atestado, que continuam no Storage; o atleta pode
   ser avisado por e-mail). Tudo fica no histórico da página do atleta.
+
+
+## Retirada de camisas dos atletas (Story 4.6)
+
+Área do painel em `/admin/retiradas` (menu "Retiradas", só admin): lista das camisas dos atletas, com novo atleta,
+edição, exclusão, confirmação de retirada (com e-mail), desfazer e exportação em planilha.
+
+### Antes de usar
+1. **Aplicar a migration** `20261112000000_athlete_shirt_pickups.sql` com `npm run db:push`: tabela
+   `athlete_shirt_pickups`, histórico `athlete_shirt_pickup_log`, visão `v_athlete_shirt_pickups` e as funções
+   `admin_save_shirt_pickup`, `admin_delete_shirt_pickup`, `admin_confirm_shirt_pickup`, `admin_undo_shirt_pickup` e
+   `admin_mark_shirt_pickup_emailed` (só admin ativo).
+2. **Importar a planilha** `retirada-dos-atletas.xlsx` (uma aba por competição; idempotente):
+
+   ```bash
+   npm run pickups:import -- --dry-run     # resumo e situação do check-in, sem gravar
+   npm run pickups:import                  # retirada-dos-atletas.xlsx
+   npm run pickups:import -- outra.xlsx    # outra planilha
+   ```
+
+   Rodar de novo não duplica atletas, não apaga retiradas, não sobrescreve campos corrigidos no painel e não traz de
+   volta quem foi excluído no painel. Nome repetido na mesma equipe entra como outra camisa (o terminal avisa).
+
+### Regras
+- A lista é própria: editar ou excluir aqui não muda o cadastro do atleta em Documentos.
+- **A retirada só é liberada depois do check-in.** O vínculo com o atleta de Documentos é automático (mesmo nome na
+  mesma competição, ignorando acentos e maiúsculas; homônimos desempatam pelo e-mail). Sem correspondência, a linha
+  mostra "Sem cadastro em Documentos": escolha o atleta em Retiradas → Editar → "Cadastro do check-in". Com check-in
+  pendente, o botão leva ao atleta em Documentos, onde dá para registrar o check-in presencial.
+- Confirmar grava o tamanho entregue, quem retirou (o próprio atleta ou outra pessoa, com nome obrigatório e
+  documento opcional), data e hora e o admin que entregou. Na mesma inscrição, dá para levar as camisas dos parceiros
+  de uma vez.
+- O e-mail "Camisa retirada" vai para o e-mail da linha (um por endereço). Se falhar, a retirada continua gravada e a
+  linha mostra "E-mail não enviado" com "Reenviar e-mail".
+- Desfazer devolve a camisa para Pendente (sem e-mail). Excluir só vale para camisa pendente.
+- Criar, editar, excluir, confirmar e desfazer ficam em `athlete_shirt_pickup_log` com quem fez e quando.
+- "Exportar planilha" baixa o `.xlsx` com os filtros da tela e uma aba de pendentes por tamanho.

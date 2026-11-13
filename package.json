@@ -13,6 +13,7 @@
     "seed:test": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/seed-test-data.mts",
     "shirt:config": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/shirt-config.mts",
     "athletes:import": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/import-athletes.mts",
+    "pickups:import": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/import-pickups.mts",
     "db:push": "supabase db push"
   },
   "dependencies": {
